@@ -16,17 +16,26 @@ import type { ActionResult } from "@/types/common";
 import type {
   MetalRate,
   RateMetalType,
+  RateSource,
 } from "@/features/metal-rates/metal-rate.types";
 
-/** Default purity each rate applies to — matches how the dashboard's 2-field form works (PRD §21). */
+/** Default purity each rate applies to — matches how the dashboard's rate form works (PRD §21). */
 const DEFAULT_PURITY: Record<RateMetalType, string> = {
   gold: "22K",
   silver: "999",
+  platinum: "950",
 };
 
+interface CurrentRateEntry {
+  ratePerGram: number;
+  effectiveDate: string;
+  source: RateSource;
+}
+
 export interface CurrentRates {
-  gold: { ratePerGram: number; effectiveDate: string } | null;
-  silver: { ratePerGram: number; effectiveDate: string } | null;
+  gold: CurrentRateEntry | null;
+  silver: CurrentRateEntry | null;
+  platinum: CurrentRateEntry | null;
 }
 
 function ratesCacheTag() {
@@ -36,28 +45,33 @@ function ratesCacheTag() {
 async function fetchCurrentRates(): Promise<CurrentRates> {
   await connectToDatabase();
 
-  const [gold, silver] = await Promise.all([
+  const [gold, silver, platinum] = await Promise.all([
     MetalRateModel.findOne({ tenantId: DEFAULT_TENANT_ID, metalType: "gold" })
       .sort({ effectiveDate: -1 })
       .lean(),
     MetalRateModel.findOne({ tenantId: DEFAULT_TENANT_ID, metalType: "silver" })
       .sort({ effectiveDate: -1 })
       .lean(),
+    MetalRateModel.findOne({ tenantId: DEFAULT_TENANT_ID, metalType: "platinum" })
+      .sort({ effectiveDate: -1 })
+      .lean(),
   ]);
 
+  const toEntry = (
+    doc: { ratePerGram: number; effectiveDate: Date; source?: RateSource } | null,
+  ): CurrentRateEntry | null =>
+    doc
+      ? {
+          ratePerGram: doc.ratePerGram,
+          effectiveDate: doc.effectiveDate.toISOString(),
+          source: doc.source ?? "manual",
+        }
+      : null;
+
   return {
-    gold: gold
-      ? {
-          ratePerGram: gold.ratePerGram,
-          effectiveDate: gold.effectiveDate.toISOString(),
-        }
-      : null,
-    silver: silver
-      ? {
-          ratePerGram: silver.ratePerGram,
-          effectiveDate: silver.effectiveDate.toISOString(),
-        }
-      : null,
+    gold: toEntry(gold),
+    silver: toEntry(silver),
+    platinum: toEntry(platinum),
   };
 }
 
@@ -90,7 +104,9 @@ export async function listRateHistory(limit = 20): Promise<MetalRate[]> {
     purity: doc.purity,
     ratePerGram: doc.ratePerGram,
     effectiveDate: doc.effectiveDate.toISOString(),
-    setByAdminId: String(doc.setByAdminId),
+    setByAdminId: doc.setByAdminId ? String(doc.setByAdminId) : undefined,
+    source: (doc.source as RateSource) ?? "manual",
+    providerName: doc.providerName ?? undefined,
     createdAt: doc.createdAt.toISOString(),
   }));
 }
@@ -121,6 +137,7 @@ export async function setDailyRates(
       ratePerGram: parsed.data.goldRatePerGram,
       effectiveDate,
       setByAdminId: session.sub,
+      source: "manual",
     },
     {
       tenantId: DEFAULT_TENANT_ID,
@@ -129,12 +146,27 @@ export async function setDailyRates(
       ratePerGram: parsed.data.silverRatePerGram,
       effectiveDate,
       setByAdminId: session.sub,
+      source: "manual",
     },
+    ...(parsed.data.platinumRatePerGram !== undefined
+      ? [
+          {
+            tenantId: DEFAULT_TENANT_ID,
+            metalType: "platinum" as const,
+            purity: DEFAULT_PURITY.platinum,
+            ratePerGram: parsed.data.platinumRatePerGram,
+            effectiveDate,
+            setByAdminId: session.sub,
+            source: "manual" as const,
+          },
+        ]
+      : []),
   ]);
 
   logAudit(session, "updated", "metal_rate", undefined, "Daily rates", {
     goldRatePerGram: parsed.data.goldRatePerGram,
     silverRatePerGram: parsed.data.silverRatePerGram,
+    platinumRatePerGram: parsed.data.platinumRatePerGram,
   });
 
   // Every product price is computed at render time from this rate, so
@@ -145,4 +177,101 @@ export async function setDailyRates(
   revalidatePath(ROUTES.admin.rates);
 
   return { success: true, data: undefined };
+}
+
+async function rateAsOf(
+  metalType: RateMetalType,
+  daysAgo: number,
+): Promise<number | null> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysAgo);
+  const doc = await MetalRateModel.findOne({
+    tenantId: DEFAULT_TENANT_ID,
+    metalType,
+    effectiveDate: { $lte: cutoff },
+  })
+    .sort({ effectiveDate: -1 })
+    .select("ratePerGram")
+    .lean();
+  return doc?.ratePerGram ?? null;
+}
+
+function percentChange(current: number, previous: number): number {
+  if (previous === 0) return 0;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+export interface RateChangeSummary {
+  metalType: RateMetalType;
+  current: CurrentRateEntry | null;
+  change24h: number | null;
+  change7d: number | null;
+  change30d: number | null;
+}
+
+/** Pricing Dashboard headline cards — current rate per metal plus 24h/7d/30d % change, computed by diffing against the nearest prior rate entry (not a running average). */
+export async function getRateChangeSummaries(): Promise<RateChangeSummary[]> {
+  await requireAdmin();
+  await connectToDatabase();
+
+  const rates = await getCurrentRates();
+  const metalTypes: RateMetalType[] = ["gold", "silver", "platinum"];
+
+  return Promise.all(
+    metalTypes.map(async (metalType) => {
+      const current = rates[metalType];
+      if (!current) {
+        return { metalType, current: null, change24h: null, change7d: null, change30d: null };
+      }
+
+      const [prior24h, prior7d, prior30d] = await Promise.all([
+        rateAsOf(metalType, 1),
+        rateAsOf(metalType, 7),
+        rateAsOf(metalType, 30),
+      ]);
+
+      return {
+        metalType,
+        current,
+        change24h: prior24h !== null ? percentChange(current.ratePerGram, prior24h) : null,
+        change7d: prior7d !== null ? percentChange(current.ratePerGram, prior7d) : null,
+        change30d:
+          prior30d !== null ? percentChange(current.ratePerGram, prior30d) : null,
+      };
+    }),
+  );
+}
+
+export interface RateHistoryPoint {
+  label: string;
+  value: number;
+}
+
+/** Chart data for the Pricing Dashboard's historical trend — every stored rate entry for one metal within the window, not resampled/averaged (rates are entered/fetched at most a few times a day, so there's nothing to downsample). */
+export async function getRateHistoryChart(
+  metalType: RateMetalType,
+  days = 30,
+): Promise<RateHistoryPoint[]> {
+  await requireAdmin();
+  await connectToDatabase();
+
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const docs = await MetalRateModel.find({
+    tenantId: DEFAULT_TENANT_ID,
+    metalType,
+    effectiveDate: { $gte: since },
+  })
+    .sort({ effectiveDate: 1 })
+    .select("ratePerGram effectiveDate")
+    .lean();
+
+  return docs.map((doc) => ({
+    label: doc.effectiveDate.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+    }),
+    value: doc.ratePerGram,
+  }));
 }

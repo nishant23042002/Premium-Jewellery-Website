@@ -58,10 +58,7 @@ export default async function AdminReservationDetailPage({
         </Badge>
       </div>
 
-      <ReservationStatusActions
-        reservationId={reservation.id}
-        status={reservation.status}
-      />
+      <ReservationStatusActions reservation={reservation} />
 
       <Card className="mt-6 border-border/60">
         <CardContent className="grid gap-4 pt-2 sm:grid-cols-2">

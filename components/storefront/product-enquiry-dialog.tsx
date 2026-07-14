@@ -15,9 +15,13 @@ import { EnquiryForm } from "@/components/storefront/enquiry-form";
 export function ProductEnquiryDialog({
   productId,
   productName,
+  productImageUrl,
+  productSkuCode,
 }: {
   productId: string;
   productName: string;
+  productImageUrl?: string;
+  productSkuCode?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -35,7 +39,17 @@ export function ProductEnquiryDialog({
         <DialogHeader>
           <DialogTitle>Enquire about {productName}</DialogTitle>
         </DialogHeader>
-        <EnquiryForm productId={productId} onSuccess={() => setOpen(false)} />
+        <EnquiryForm
+          productId={productId}
+          productName={productName}
+          productImageUrl={productImageUrl}
+          defaultMessage={
+            productSkuCode
+              ? `Hi, I'm interested in "${productName}" (SKU: ${productSkuCode}). Could you share more details on availability and pricing?`
+              : `Hi, I'm interested in "${productName}". Could you share more details on availability and pricing?`
+          }
+          onSuccess={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

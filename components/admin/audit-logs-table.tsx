@@ -3,14 +3,14 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils/format";
+import { TimeCell } from "@/components/admin/time-cell";
 import type { AuditLogEntry } from "@/features/audit-logs/audit-log.types";
 
 const columns: ColumnDef<AuditLogEntry>[] = [
   {
     id: "at",
     header: "When",
-    cell: ({ row }) => formatDate(row.original.at),
+    cell: ({ row }) => <TimeCell at={row.original.at} />,
   },
   { accessorKey: "actorEmail", header: "Who" },
   {

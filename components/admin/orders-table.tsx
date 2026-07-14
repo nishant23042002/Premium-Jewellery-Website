@@ -40,14 +40,14 @@ const columns: ColumnDef<Order>[] = [
       const extraCount = row.original.items.length - 1;
       if (!firstItem) return null;
       return (
-        <div className="flex items-center gap-2">
-          <div className="relative size-9 shrink-0 overflow-hidden rounded-md bg-muted">
+        <div className="flex items-center gap-3">
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
             {firstItem.imageUrl && (
               <Image
                 src={firstItem.imageUrl}
                 alt={firstItem.name}
                 fill
-                sizes="36px"
+                sizes="56px"
                 className="object-cover"
               />
             )}

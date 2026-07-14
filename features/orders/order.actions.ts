@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth/session";
 import { requirePermission } from "@/lib/auth/permissions";
 import { requireCustomer } from "@/lib/auth/customer-session";
 import { DEFAULT_TENANT_ID } from "@/lib/db/schema-helpers";
+import { getRazorpayClient } from "@/lib/razorpay/client";
+import { logger } from "@/lib/logger";
 import { OrderModel } from "@/features/orders/order.model";
 import {
   updateOrderStatusSchema,
@@ -20,6 +22,7 @@ import type {
   AddressSnapshot,
   Order,
   OrderItem,
+  OrderStatus,
 } from "@/features/orders/order.types";
 
 interface OrderItemDoc extends Omit<OrderItem, "productId"> {
@@ -172,6 +175,108 @@ export async function updateOrderStatus(
   );
   revalidatePath(ROUTES.admin.orders);
   revalidatePath(ROUTES.admin.order(id));
+  return {
+    success: true,
+    data: toOrder(doc.toObject() as unknown as OrderDoc),
+  };
+}
+
+/**
+ * The only path that actually moves money back to a customer — previously
+ * "Mark Refunded" just flipped `status` to "refunded" in MongoDB with no
+ * Razorpay call at all, so the order looked refunded while the customer's
+ * money never moved. Called for both "cancelled" and "refunded" target
+ * statuses (see order-status-actions.tsx) since every Order in this system
+ * only ever exists once payment succeeded — there's no "cancel before
+ * paying" state, so cancelling a paid order owes the customer their money
+ * back exactly the same as an explicit refund does.
+ */
+export async function refundOrder(
+  id: string,
+  targetStatus: Extract<OrderStatus, "cancelled" | "refunded">,
+  note?: string,
+): Promise<ActionResult<Order>> {
+  const session = await requirePermission("orders.manage");
+
+  await connectToDatabase();
+
+  const existing = await OrderModel.findOne({
+    _id: id,
+    tenantId: DEFAULT_TENANT_ID,
+  });
+  if (!existing) {
+    return { success: false, error: "Order not found" };
+  }
+  if (existing.payment.status !== "paid") {
+    return {
+      success: false,
+      error: `This order's payment is "${existing.payment.status}", not "paid" — nothing to refund.`,
+    };
+  }
+  if (!existing.payment.razorpayPaymentId) {
+    return {
+      success: false,
+      error: "This order has no linked Razorpay payment to refund.",
+    };
+  }
+
+  let refund;
+  try {
+    const razorpay = getRazorpayClient();
+    refund = await razorpay.payments.refund(existing.payment.razorpayPaymentId, {
+      speed: "normal",
+      notes: { orderId: id, orderNumber: existing.orderNumber },
+    });
+  } catch (error) {
+    const description =
+      error && typeof error === "object" && "error" in error
+        ? (error as { error?: { description?: string } }).error?.description
+        : undefined;
+    logger.error("refundOrder", "Razorpay refund failed", {
+      error,
+      orderId: id,
+      razorpayPaymentId: existing.payment.razorpayPaymentId,
+    });
+    return {
+      success: false,
+      error: description ?? "Refund failed. Please try again or check the Razorpay dashboard.",
+    };
+  }
+
+  const doc = await OrderModel.findOneAndUpdate(
+    { _id: id, tenantId: DEFAULT_TENANT_ID },
+    {
+      $set: {
+        status: targetStatus,
+        "payment.status": "refunded",
+        "payment.refundId": refund.id,
+        "payment.refundedAt": new Date(),
+      },
+      $push: {
+        statusHistory: {
+          status: targetStatus,
+          note: note
+            ? `Refunded via Razorpay (${refund.id}) — ${note}`
+            : `Refunded via Razorpay (${refund.id})`,
+          byAdminName: session.email,
+          at: new Date(),
+        },
+      },
+    },
+    { returnDocument: "after" },
+  );
+
+  if (!doc) {
+    return { success: false, error: "Order not found" };
+  }
+
+  logAudit(session, "refunded", "order", String(doc._id), doc.orderNumber, {
+    status: targetStatus,
+    razorpayRefundId: refund.id,
+  });
+  revalidatePath(ROUTES.admin.orders);
+  revalidatePath(ROUTES.admin.order(id));
+
   return {
     success: true,
     data: toOrder(doc.toObject() as unknown as OrderDoc),

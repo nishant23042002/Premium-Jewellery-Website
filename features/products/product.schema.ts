@@ -24,7 +24,7 @@ export const productFormSchema = z.object({
       mr: z.string().optional(),
     })
     .optional(),
-  metalType: z.enum(["gold", "silver", "diamond", "other"]),
+  metalType: z.enum(["gold", "silver", "platinum", "diamond", "other"]),
   purity: z.string().min(1, "Purity is required (e.g. 22K)"),
   grossWeightGrams: z.coerce
     .number()
@@ -37,6 +37,21 @@ export const productFormSchema = z.object({
     .number()
     .min(0, "Making charge cannot be negative"),
   gstPercentage: z.coerce.number().min(0).max(100).default(3),
+  stoneValue: z.coerce.number().min(0, "Stone value cannot be negative").default(0),
+  certificationCost: z.coerce
+    .number()
+    .min(0, "Certification cost cannot be negative")
+    .default(0),
+  customCharges: z.coerce
+    .number()
+    .min(0, "Custom charges cannot be negative")
+    .default(0),
+  priceOverride: z
+    .object({
+      locked: z.boolean().default(false),
+      fixedPrice: z.coerce.number().min(0).optional(),
+    })
+    .default({ locked: false }),
   quantity: z.coerce
     .number()
     .int("Quantity must be a whole number")

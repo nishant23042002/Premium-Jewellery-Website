@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Package, User } from "lucide-react";
+import { CalendarClock, Package, User } from "lucide-react";
 import { Container } from "@/components/common/container";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHero } from "@/components/marketing/page-hero";
@@ -41,6 +41,11 @@ export default async function AccountPage() {
                   {customer.phone && (
                     <p className="text-muted-foreground">{customer.phone}</p>
                   )}
+                  {customer.authProvider === "google" && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Signed in with Google
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -54,6 +59,17 @@ export default async function AccountPage() {
             >
               <Package className="size-5 text-gold" strokeWidth={1.5} />
               <span>View your order history, tracking, and invoices</span>
+            </Link>
+          </div>
+
+          <div>
+            <h2 className="mb-4 font-heading text-xl">My Reservations</h2>
+            <Link
+              href={ROUTES.accountReservations}
+              className="flex items-center gap-3 rounded-xl border border-border p-4 text-sm hover:border-gold/50"
+            >
+              <CalendarClock className="size-5 text-gold" strokeWidth={1.5} />
+              <span>View your showroom visit bookings and their status</span>
             </Link>
           </div>
 

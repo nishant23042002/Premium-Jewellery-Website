@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
@@ -26,6 +27,11 @@ import { cn } from "@/lib/utils";
 
 interface EnquiryFormProps {
   productId?: string;
+  /** Shown as a small preview card at the top of the form so the customer can confirm which piece they're enquiring about. */
+  productName?: string;
+  productImageUrl?: string;
+  /** Pre-fills the message field (e.g. "I'm interested in ... SKU ...") so the customer doesn't have to write it from scratch — still fully editable. */
+  defaultMessage?: string;
   /** Adds a preferred-date input (Reservation page) — folded into the message text on submit since Enquiry has no dedicated date field yet. */
   showDateField?: boolean;
   submitLabel?: string;
@@ -41,6 +47,9 @@ interface EnquiryFormProps {
  */
 export function EnquiryForm({
   productId,
+  productName,
+  productImageUrl,
+  defaultMessage,
   showDateField = false,
   submitLabel = "Send Enquiry",
   className,
@@ -57,7 +66,7 @@ export function EnquiryForm({
     defaultValues: {
       name: "",
       phone: "",
-      message: "",
+      message: defaultMessage ?? "",
       source: "form",
       productId,
     },
@@ -102,6 +111,26 @@ export function EnquiryForm({
         onSubmit={form.handleSubmit(onSubmit)}
         className={cn("space-y-4", className)}
       >
+        {productName && (
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-secondary/20 p-3">
+            {productImageUrl && (
+              <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                <Image
+                  src={productImageUrl}
+                  alt={productName}
+                  fill
+                  sizes="56px"
+                  className="object-cover"
+                />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Enquiring about</p>
+              <p className="truncate text-sm font-medium">{productName}</p>
+            </div>
+          </div>
+        )}
+
         <FormField
           control={form.control}
           name="name"

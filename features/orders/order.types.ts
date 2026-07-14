@@ -37,6 +37,9 @@ export interface OrderPayment {
   amount: number;
   currency: string;
   verifiedAt?: string;
+  /** Set once a real Razorpay refund succeeds (see order.actions.ts :: refundOrder) — never set just because the order's `status` field says "refunded"/"cancelled". */
+  refundId?: string;
+  refundedAt?: string;
 }
 
 export type OrderStatus =

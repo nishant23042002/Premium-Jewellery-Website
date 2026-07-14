@@ -6,6 +6,8 @@ export interface StylingStory {
   title: LocalizedText;
   subtitle?: LocalizedText;
   coverImageUrl: string;
+  /** Optional — takes priority over coverImageUrl on the storefront card when set. */
+  videoUrl?: string;
   sortOrder: number;
   isPublished: boolean;
   createdAt: string;
@@ -17,4 +19,5 @@ export interface StylingStoryResolved {
   title: string;
   subtitle?: string;
   coverImageUrl: string;
+  videoUrl?: string;
 }

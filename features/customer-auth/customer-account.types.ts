@@ -18,6 +18,8 @@ export interface CustomerAccount {
   addresses: Address[];
   isActive: boolean;
   createdAt: string;
+  /** How the account was first created — "google" accounts may still lack a passwordHash. */
+  authProvider: "password" | "google";
 }
 
 /** Decoded JWT payload carried in the customer session cookie — deliberately a distinct shape from admin's `SessionPayload` so the two tokens can never be confused/swapped. */

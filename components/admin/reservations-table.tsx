@@ -1,15 +1,55 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
+import { ImageOff } from "lucide-react";
 import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
+import { TimeCell } from "@/components/admin/time-cell";
 import { RESERVATION_STATUS_META } from "@/constants/reservation";
 import { formatDate } from "@/lib/utils/format";
 import { ROUTES } from "@/constants/routes";
 import type { Reservation } from "@/features/reservations/reservation.types";
 
 const columns: ColumnDef<Reservation>[] = [
+  {
+    id: "products",
+    header: "Pieces",
+    cell: ({ row }) => {
+      const products = row.original.products;
+      const first = products[0];
+      const extraCount = products.length - 1;
+      if (!first) {
+        return (
+          <div className="flex size-14 items-center justify-center rounded-lg bg-muted">
+            <ImageOff className="size-4 text-muted-foreground/50" />
+          </div>
+        );
+      }
+      return (
+        <div className="flex items-center gap-3">
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+            {first.imageUrl && (
+              <Image
+                src={first.imageUrl}
+                alt={first.name}
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
+            )}
+          </div>
+          <span className="max-w-36 truncate text-sm">
+            {first.name}
+            {extraCount > 0 && (
+              <span className="text-muted-foreground"> +{extraCount}</span>
+            )}
+          </span>
+        </div>
+      );
+    },
+  },
   {
     accessorKey: "name",
     header: "Customer",
@@ -34,11 +74,6 @@ const columns: ColumnDef<Reservation>[] = [
     ),
   },
   {
-    id: "products",
-    header: "Pieces",
-    cell: ({ row }) => row.original.products.length || "—",
-  },
-  {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
@@ -49,7 +84,7 @@ const columns: ColumnDef<Reservation>[] = [
   {
     id: "createdAt",
     header: "Submitted",
-    cell: ({ row }) => formatDate(row.original.createdAt),
+    cell: ({ row }) => <TimeCell at={row.original.createdAt} />,
   },
 ];
 

@@ -15,8 +15,8 @@ export const productCsvRowSchema = z.object({
   name_hi: z.string().optional().default(""),
   name_mr: z.string().optional().default(""),
   categorySlug: z.string().min(1, "categorySlug is required"),
-  metalType: z.enum(["gold", "silver", "diamond", "other"], {
-    message: "metalType must be gold, silver, diamond, or other",
+  metalType: z.enum(["gold", "silver", "platinum", "diamond", "other"], {
+    message: "metalType must be gold, silver, platinum, diamond, or other",
   }),
   purity: z.string().min(1, "purity is required"),
   grossWeightGrams: z.coerce

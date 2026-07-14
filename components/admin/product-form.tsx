@@ -1,15 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
-import { Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { History, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -27,6 +28,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { MediaPicker } from "@/components/admin/media-picker";
+import { FormActionsBar } from "@/components/admin/form-actions-bar";
+import { useFormAutosaveDraft } from "@/hooks/use-form-autosave-draft";
 import {
   createProduct,
   updateProduct,
@@ -35,17 +38,21 @@ import {
   productFormSchema,
   type ProductFormInput,
 } from "@/features/products/product.schema";
+import { calculatePrice, rateForMetalType } from "@/lib/pricing/calculate-price";
+import { formatINR } from "@/lib/utils/format";
 import { toast } from "@/lib/toast";
 import { ROUTES } from "@/constants/routes";
 import type { Category } from "@/features/categories/category.types";
 import type { Product } from "@/features/products/product.types";
+import type { CurrentRates } from "@/features/metal-rates/metal-rate.actions";
 
 interface ProductFormProps {
   product?: Product;
   categories: Category[];
+  currentRates: CurrentRates;
 }
 
-export function ProductForm({ product, categories }: ProductFormProps) {
+export function ProductForm({ product, categories, currentRates }: ProductFormProps) {
   const router = useRouter();
   const isEditing = !!product;
 
@@ -64,6 +71,10 @@ export function ProductForm({ product, categories }: ProductFormProps) {
       makingChargeType: product?.makingChargeType ?? "percentage",
       makingChargeValue: product?.makingChargeValue ?? 0,
       gstPercentage: product?.gstPercentage ?? 3,
+      stoneValue: product?.stoneValue ?? 0,
+      certificationCost: product?.certificationCost ?? 0,
+      customCharges: product?.customCharges ?? 0,
+      priceOverride: product?.priceOverride ?? { locked: false },
       quantity: product?.quantity ?? 0,
       images: product?.images ?? [],
       videos: product?.videos ?? [],
@@ -81,6 +92,76 @@ export function ProductForm({ product, categories }: ProductFormProps) {
   const videoFields = useFieldArray({ control: form.control, name: "videos" });
   const availability = form.watch("availability");
 
+  // Live "Preview Final Price" — pure client-side math against the rates
+  // this page was rendered with (a snapshot, not re-fetched live; the admin
+  // reloading the page after a rate change picks up the new one).
+  const pricingWatch = form.watch([
+    "metalType",
+    "netWeightGrams",
+    "makingChargeType",
+    "makingChargeValue",
+    "gstPercentage",
+    "stoneValue",
+    "certificationCost",
+    "customCharges",
+    "priceOverride",
+  ]);
+  const [
+    watchedMetalType,
+    watchedNetWeight,
+    watchedMakingChargeType,
+    watchedMakingChargeValue,
+    watchedGst,
+    watchedStoneValue,
+    watchedCertificationCost,
+    watchedCustomCharges,
+    watchedPriceOverride,
+  ] = pricingWatch;
+  const priceOverrideLocked = watchedPriceOverride?.locked === true;
+
+  const rate = rateForMetalType(watchedMetalType ?? "gold", currentRates);
+  const pricePreview = calculatePrice({
+    netWeightGrams: Number(watchedNetWeight) || 0,
+    makingChargeType: watchedMakingChargeType ?? "percentage",
+    makingChargeValue: Number(watchedMakingChargeValue) || 0,
+    gstPercentage: Number(watchedGst) || 0,
+    metalRatePerGram: rate?.ratePerGram ?? null,
+    rateEffectiveDate: rate?.effectiveDate ?? null,
+    stoneValue: Number(watchedStoneValue) || 0,
+    certificationCost: Number(watchedCertificationCost) || 0,
+    customCharges: Number(watchedCustomCharges) || 0,
+    override:
+      watchedPriceOverride && typeof watchedPriceOverride === "object"
+        ? (watchedPriceOverride as { locked: boolean; fixedPrice?: number })
+        : undefined,
+  });
+
+  const draftKey = `ambika-admin-draft-product-${product?.id ?? "new"}`;
+  const watchedValues = form.watch();
+  const { readDraft, clearDraft, lastSavedAt } = useFormAutosaveDraft(
+    draftKey,
+    watchedValues,
+  );
+  const [draftAvailable, setDraftAvailable] = useState(false);
+
+  useEffect(() => {
+    setDraftAvailable(readDraft() !== null);
+    // Only check once, on mount — this is a "did we leave something behind
+    // last time" check, not something that should re-fire as the user types.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function restoreDraft() {
+    const draft = readDraft();
+    if (draft) form.reset(draft);
+    setDraftAvailable(false);
+  }
+
+  function discardDraft() {
+    clearDraft();
+    setDraftAvailable(false);
+  }
+
   async function onSubmit(values: ProductFormInput) {
     const result = isEditing
       ? await updateProduct(product.id, values)
@@ -94,6 +175,7 @@ export function ProductForm({ product, categories }: ProductFormProps) {
       return;
     }
 
+    clearDraft();
     toast.success(`Product ${isEditing ? "updated" : "created"}`);
     router.push(ROUTES.admin.products);
     router.refresh();
@@ -105,6 +187,34 @@ export function ProductForm({ product, categories }: ProductFormProps) {
         onSubmit={form.handleSubmit(onSubmit)}
         className="max-w-3xl space-y-6"
       >
+        {draftAvailable && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gold/30 bg-gold/5 px-4 py-3">
+            <History className="size-4 shrink-0 text-gold-dark" />
+            <p className="text-sm">
+              We found unsaved changes from earlier on this{" "}
+              {isEditing ? "product" : "new product"}.
+            </p>
+            <div className="ml-auto flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="gold"
+                onClick={restoreDraft}
+              >
+                Restore draft
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={discardDraft}
+              >
+                Discard
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Basic Info</CardTitle>
@@ -235,6 +345,7 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                     <SelectContent>
                       <SelectItem value="gold">Gold</SelectItem>
                       <SelectItem value="silver">Silver</SelectItem>
+                      <SelectItem value="platinum">Platinum</SelectItem>
                       <SelectItem value="diamond">Diamond</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
@@ -401,6 +512,165 @@ export function ProductForm({ product, categories }: ProductFormProps) {
 
         <Card>
           <CardHeader>
+            <CardTitle>Pricing Extras & Override</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Flat rupee add-ons on top of the metal + making charge formula
+              — leave at 0 if not applicable.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FormField
+                control={form.control}
+                name="stoneValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stone value</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...field}
+                        value={
+                          typeof field.value === "number" ||
+                          typeof field.value === "string"
+                            ? field.value
+                            : ""
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="certificationCost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Certification cost</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...field}
+                        value={
+                          typeof field.value === "number" ||
+                          typeof field.value === "string"
+                            ? field.value
+                            : ""
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="customCharges"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Other charges</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...field}
+                        value={
+                          typeof field.value === "number" ||
+                          typeof field.value === "string"
+                            ? field.value
+                            : ""
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="priceOverride.locked"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border p-3">
+                  <div>
+                    <FormLabel>Lock price</FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Bypass the formula entirely and show a fixed price
+                      instead — for one-off promotions or negotiated pieces.
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value ?? false}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            {priceOverrideLocked && (
+              <FormField
+                control={form.control}
+                name="priceOverride.fixedPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fixed price (₹, final — GST inclusive)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...field}
+                        value={
+                          typeof field.value === "number" ||
+                          typeof field.value === "string"
+                            ? field.value
+                            : ""
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <div className="rounded-lg border border-gold/30 bg-gold/5 p-3">
+              <p className="text-xs text-muted-foreground">
+                Preview final price {rate ? "" : "— no metal rate set yet"}
+              </p>
+              <p className="font-heading text-2xl">
+                {pricePreview.isRatePending
+                  ? "—"
+                  : formatINR(pricePreview.total)}
+              </p>
+              {!pricePreview.isOverridden && !pricePreview.isRatePending && (
+                <p className="text-xs text-muted-foreground">
+                  Metal {formatINR(pricePreview.metalValue)} + Making{" "}
+                  {formatINR(pricePreview.makingCharge)}
+                  {pricePreview.stoneValue > 0 &&
+                    ` + Stone ${formatINR(pricePreview.stoneValue)}`}
+                  {pricePreview.certificationCost > 0 &&
+                    ` + Certification ${formatINR(pricePreview.certificationCost)}`}
+                  {pricePreview.customCharges > 0 &&
+                    ` + Other ${formatINR(pricePreview.customCharges)}`}
+                  {" + GST "}
+                  {formatINR(pricePreview.gstAmount)}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Photos & Video</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -411,7 +681,7 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                   <div key={field.id} className="relative size-20">
                     <Image
                       src={field.url}
-                      alt=""
+                      alt={`Product photo ${index + 1}`}
                       fill
                       className="rounded-lg border border-border object-cover"
                       sizes="80px"
@@ -419,6 +689,7 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                     <button
                       type="button"
                       onClick={() => imageFields.remove(index)}
+                      aria-label={`Remove photo ${index + 1}`}
                       className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
                     >
                       <X className="size-3" />
@@ -446,10 +717,12 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                 <div key={field.id} className="flex gap-2">
                   <Input
                     placeholder="https://..."
+                    aria-label={`Video ${index + 1} URL`}
                     {...form.register(`videos.${index}.url` as const)}
                   />
                   <Input
                     placeholder="Title (optional)"
+                    aria-label={`Video ${index + 1} title`}
                     className="max-w-40"
                     {...form.register(`videos.${index}.title` as const)}
                   />
@@ -457,6 +730,7 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                     type="button"
                     variant="outline"
                     size="icon-sm"
+                    aria-label={`Remove video ${index + 1}`}
                     onClick={() => videoFields.remove(index)}
                   >
                     <X className="size-3.5" />
@@ -546,12 +820,17 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label>Production time (days)</Label>
-                    <div className="flex items-center gap-2">
+                    <Label id="production-time-label">Production time (days)</Label>
+                    <div
+                      className="flex items-center gap-2"
+                      role="group"
+                      aria-labelledby="production-time-label"
+                    >
                       <Input
                         type="number"
                         min="0"
                         placeholder="Min"
+                        aria-label="Minimum production time in days"
                         {...form.register("productionTimeDays.min")}
                       />
                       <span className="text-xs text-muted-foreground">to</span>
@@ -559,17 +838,25 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                         type="number"
                         min="0"
                         placeholder="Max"
+                        aria-label="Maximum production time in days"
                         {...form.register("productionTimeDays.max")}
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Delivery estimate (days, after dispatch)</Label>
-                    <div className="flex items-center gap-2">
+                    <Label id="delivery-estimate-label">
+                      Delivery estimate (days, after dispatch)
+                    </Label>
+                    <div
+                      className="flex items-center gap-2"
+                      role="group"
+                      aria-labelledby="delivery-estimate-label"
+                    >
                       <Input
                         type="number"
                         min="0"
                         placeholder="Min"
+                        aria-label="Minimum delivery estimate in days"
                         {...form.register("deliveryEstimateDays.min")}
                       />
                       <span className="text-xs text-muted-foreground">to</span>
@@ -577,6 +864,7 @@ export function ProductForm({ product, categories }: ProductFormProps) {
                         type="number"
                         min="0"
                         placeholder="Max"
+                        aria-label="Maximum delivery estimate in days"
                         {...form.register("deliveryEstimateDays.max")}
                       />
                     </div>
@@ -644,25 +932,12 @@ export function ProductForm({ product, categories }: ProductFormProps) {
           </CardContent>
         </Card>
 
-        <div className="flex gap-2">
-          <Button
-            type="submit"
-            variant="gold"
-            disabled={form.formState.isSubmitting}
-          >
-            {form.formState.isSubmitting && (
-              <Loader2 className="size-4 animate-spin" />
-            )}
-            {isEditing ? "Save Changes" : "Create Product"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push(ROUTES.admin.products)}
-          >
-            Cancel
-          </Button>
-        </div>
+        <FormActionsBar
+          isSubmitting={form.formState.isSubmitting}
+          submitLabel={isEditing ? "Save Changes" : "Create Product"}
+          onCancel={() => router.push(ROUTES.admin.products)}
+          draftSavedAt={lastSavedAt}
+        />
       </form>
     </Form>
   );

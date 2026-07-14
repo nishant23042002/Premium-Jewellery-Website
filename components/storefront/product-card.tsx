@@ -10,12 +10,15 @@ import { MouseGlow } from "@/components/motion/mouse-glow";
 import { AvailabilityBadge } from "@/components/storefront/availability-badge";
 import { LowStockBadge } from "@/components/storefront/low-stock-badge";
 import { ProductionEstimate } from "@/components/storefront/production-estimate";
+import { ProductQuickView } from "@/components/storefront/product-quick-view";
 import {
   isMadeToOrder,
+  isNewArrival,
   LOW_STOCK_THRESHOLD,
 } from "@/features/products/product.types";
 import { ROUTES } from "@/constants/routes";
 import { formatINR } from "@/lib/utils/format";
+import { pickLocalized } from "@/lib/i18n/pick-localized";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useWishlistStore } from "@/store/zustand/use-wishlist-store";
@@ -31,6 +34,9 @@ interface ProductCardProps {
   price: PriceBreakdown;
   locale?: Locale;
   className?: string;
+  /** Computed catalogue-wide signals — batch-looked-up by the listing page, never queried per-card. */
+  isBestSeller?: boolean;
+  isTrending?: boolean;
 }
 
 /**
@@ -43,6 +49,8 @@ export function ProductCard({
   price,
   locale = "en",
   className,
+  isBestSeller = false,
+  isTrending = false,
 }: ProductCardProps) {
   const isShortlisted = useWishlistStore((s) => s.has(product.id));
   const toggleShortlist = useWishlistStore((s) => s.toggle);
@@ -67,6 +75,20 @@ export function ProductCard({
 
   const coverImage = product.images[0];
   const hoverImage = product.images[1];
+  const displayName = pickLocalized(product.name, locale);
+
+  // A card only ever shows one promotional badge — stacking Best Seller +
+  // Trending + New + Featured reads as noise. Priority favors the stronger
+  // buying-intent signal first.
+  const promoBadge = isBestSeller
+    ? "Best Seller"
+    : isTrending
+      ? "Trending"
+      : isNewArrival(product)
+        ? "New Arrival"
+        : product.isFeatured
+          ? "Featured"
+          : null;
 
   return (
     <motion.div
@@ -79,11 +101,12 @@ export function ProductCard({
           color="var(--gold-light)"
           className="aspect-square overflow-hidden rounded-t-lg bg-muted shadow-sm transition-shadow duration-300 group-hover:shadow-md max-[500px]:aspect-4/6"
         >
+          <ProductQuickView product={product} price={price} locale={locale} />
           {coverImage ? (
             <>
               <Image
                 src={coverImage.url}
-                alt={coverImage.altText?.[locale] ?? product.name[locale]}
+                alt={coverImage.altText?.[locale] || displayName}
                 fill
                 sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                 className={cn(
@@ -98,7 +121,7 @@ export function ProductCard({
               {hoverImage && (
                 <Image
                   src={hoverImage.url}
-                  alt={hoverImage.altText?.[locale] ?? product.name[locale]}
+                  alt={hoverImage.altText?.[locale] || displayName}
                   fill
                   sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                   className="object-cover opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
@@ -112,7 +135,7 @@ export function ProductCard({
           )}
 
           <div className="absolute bottom-0 flex w-full flex-col">
-            {product.isFeatured && <Badge variant="gold">Featured</Badge>}
+            {promoBadge && <Badge variant="gold">{promoBadge}</Badge>}
             {product.availability !== "in_showroom" && (
               <AvailabilityBadge availability={product.availability} />
             )}
@@ -168,9 +191,7 @@ export function ProductCard({
         </MouseGlow>
 
         <div className="mt-1 space-y-1">
-          <h3 className="truncate font-heading text-base">
-            {product.name[locale]}
-          </h3>
+          <h3 className="truncate font-heading text-base">{displayName}</h3>
           <p className="text-xs text-muted-foreground">
             {product.purity} {product.metalType}
           </p>

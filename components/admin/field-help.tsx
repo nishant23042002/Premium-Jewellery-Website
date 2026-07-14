@@ -38,7 +38,7 @@ export function FieldHelp({ helpKey }: FieldHelpProps) {
           <div className="relative aspect-video overflow-hidden rounded-md border border-border">
             <Image
               src={entry.screenshotUrl}
-              alt=""
+              alt="Preview of where this appears on the site"
               fill
               sizes="288px"
               className="object-cover object-top"

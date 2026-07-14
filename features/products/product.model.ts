@@ -53,7 +53,7 @@ const productSchema = new Schema(
     description: { type: localizedTextSchema(false), required: true },
     metalType: {
       type: String,
-      enum: ["gold", "silver", "diamond", "other"],
+      enum: ["gold", "silver", "platinum", "diamond", "other"],
       required: true,
     },
     purity: { type: String, required: true, trim: true },
@@ -67,6 +67,19 @@ const productSchema = new Schema(
     },
     makingChargeValue: { type: Number, required: true, min: 0 },
     gstPercentage: { type: Number, required: true, default: 3 },
+    stoneValue: { type: Number, default: 0, min: 0 },
+    certificationCost: { type: Number, default: 0, min: 0 },
+    customCharges: { type: Number, default: 0, min: 0 },
+    priceOverride: {
+      type: new Schema(
+        {
+          locked: { type: Boolean, default: false },
+          fixedPrice: { type: Number, min: 0 },
+        },
+        { _id: false },
+      ),
+      default: () => ({ locked: false }),
+    },
     quantity: { type: Number, required: true, default: 0, min: 0 },
     images: { type: [productImageSchema], default: [] },
     videos: { type: [productVideoSchema], default: [] },

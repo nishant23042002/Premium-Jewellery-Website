@@ -40,17 +40,25 @@ import { toast } from "@/lib/toast";
 interface ReservationFormProps {
   /** Prefills the product picker when arriving from a product's "Reserve This Piece" button. */
   prefillProductSlug?: string;
+  /** Prefills name/phone/email when the visitor is signed in — saves them re-typing details we already have. */
+  prefillCustomer?: { name: string; phone?: string; email: string };
+  /** Called after a successful submit, once the form has reset — lets an embedding page (e.g. My Reservations) refresh its own data instead of relying on navigation. */
+  onSuccess?: () => void;
 }
 
-export function ReservationForm({ prefillProductSlug }: ReservationFormProps) {
+export function ReservationForm({
+  prefillProductSlug,
+  prefillCustomer,
+  onSuccess,
+}: ReservationFormProps) {
   const [products, setProducts] = useState<PickedProduct[]>([]);
 
   const form = useForm<ReservationFormInput>({
     resolver: zodResolver(reservationFormSchema),
     defaultValues: {
-      name: "",
-      phone: "",
-      email: "",
+      name: prefillCustomer?.name ?? "",
+      phone: prefillCustomer?.phone ?? "",
+      email: prefillCustomer?.email ?? "",
       preferredTimeSlot: "",
       branchId: DEFAULT_BRANCH_ID,
       productIds: [],
@@ -91,6 +99,7 @@ export function ReservationForm({ prefillProductSlug }: ReservationFormProps) {
       );
       form.reset();
       setProducts([]);
+      onSuccess?.();
     } catch {
       toast.error(
         "Couldn't submit that",

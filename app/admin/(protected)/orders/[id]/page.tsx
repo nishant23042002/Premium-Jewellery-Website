@@ -42,7 +42,9 @@ export default async function AdminOrderDetailPage({
           </div>
           <OrderStatusActions
             orderId={order.id}
+            orderNumber={order.orderNumber}
             status={order.status}
+            grandTotal={order.pricing.grandTotal}
             isMadeToOrder={isMto}
           />
         </CardContent>

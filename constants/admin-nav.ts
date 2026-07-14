@@ -268,3 +268,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     ],
   },
 ];
+
+/** Flattened lookup used by the sidebar's Favorites/Recents rows and the command palette. */
+export const ALL_ADMIN_NAV_ITEMS: AdminNavItem[] = ADMIN_NAV_GROUPS.flatMap(
+  (group) => group.items,
+);

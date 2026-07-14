@@ -3,10 +3,13 @@ import { sendEmail } from "@/lib/notifications/send-email";
 import {
   newReservationAdminEmail,
   reservationCancelledCustomerEmail,
+  reservationCompletedCustomerEmail,
   reservationConfirmedCustomerEmail,
   reservationReceivedCustomerEmail,
 } from "@/lib/notifications/email-templates";
 import { SITE } from "@/constants/site";
+import { clientEnv } from "@/config/env";
+import { signReservationActionToken } from "@/lib/auth/reservation-action-token";
 import type {
   Reservation,
   ReservationStatus,
@@ -17,13 +20,28 @@ import type {
  * WhatsApp is deliberately NOT auto-sent here — there's no WhatsApp
  * Business API configured, so that stays a manual "click to send" action
  * in the admin dashboard (see lib/notifications/whatsapp-templates.ts).
- * Email uses the same stubbed `sendEmail` until a provider is wired up.
  */
+
+function reservationActionUrl(
+  reservationId: string,
+  targetStatus: ReservationStatus,
+): string {
+  const token = signReservationActionToken(reservationId, targetStatus);
+  return `${clientEnv.NEXT_PUBLIC_SITE_URL}/api/reservations/action?token=${token}`;
+}
+
 export async function notifyReservationCreated(
   reservation: Reservation,
 ): Promise<void> {
   const customerEmail = reservationReceivedCustomerEmail(reservation);
-  const adminEmail = newReservationAdminEmail(reservation);
+  // A freshly-created reservation is always "pending", whose only legal
+  // transitions are confirmed/cancelled (RESERVATION_STATUS_TRANSITIONS) —
+  // "completed" only makes sense after a visit actually happens, which the
+  // admin dashboard (not this initial email) handles.
+  const adminEmail = newReservationAdminEmail(reservation, {
+    confirmUrl: reservationActionUrl(reservation.id, "confirmed"),
+    cancelUrl: reservationActionUrl(reservation.id, "cancelled"),
+  });
 
   await Promise.all([
     reservation.email
@@ -43,6 +61,11 @@ export async function notifyReservationStatusChanged(
     await sendEmail({
       to: reservation.email,
       ...reservationConfirmedCustomerEmail(reservation),
+    });
+  } else if (newStatus === "completed") {
+    await sendEmail({
+      to: reservation.email,
+      ...reservationCompletedCustomerEmail(reservation),
     });
   } else if (newStatus === "cancelled") {
     await sendEmail({

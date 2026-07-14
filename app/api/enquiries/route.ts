@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-real-ip") ??
     "anonymous";
 
-  const rateLimit = checkRateLimit(`enquiries:${identifier}`, {
+  const rateLimit = await checkRateLimit(`enquiries:${identifier}`, {
     limit: 5,
     windowMs: 60_000,
   });

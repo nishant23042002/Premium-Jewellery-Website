@@ -74,6 +74,10 @@ export function StylingStoryCarousel({
           if (Math.abs(offset) > VISIBLE_RANGE) return null;
           const isActive = offset === 0;
 
+          // Video only plays on the centered card — peeking neighbors show
+          // their poster image, so at most one video decodes at a time.
+          const playVideo = isActive && story.videoUrl;
+
           return (
             <button
               key={story.id}
@@ -87,13 +91,26 @@ export function StylingStoryCarousel({
                 opacity: 1 - Math.abs(offset) * 0.3,
               }}
             >
-              <Image
-                src={story.coverImageUrl}
-                alt={story.title}
-                fill
-                sizes="(min-width: 640px) 288px, 224px"
-                className="object-cover"
-              />
+              {playVideo ? (
+                <video
+                  key={story.videoUrl}
+                  src={story.videoUrl}
+                  poster={story.coverImageUrl}
+                  className="size-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                />
+              ) : (
+                <Image
+                  src={story.coverImageUrl}
+                  alt={story.title}
+                  fill
+                  sizes="(min-width: 640px) 288px, 224px"
+                  className="object-cover"
+                />
+              )}
             </button>
           );
         })}

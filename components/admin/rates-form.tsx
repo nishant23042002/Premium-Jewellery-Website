@@ -31,6 +31,7 @@ export function RatesForm({ currentRates }: { currentRates: CurrentRates }) {
     defaultValues: {
       goldRatePerGram: currentRates.gold?.ratePerGram ?? 0,
       silverRatePerGram: currentRates.silver?.ratePerGram ?? 0,
+      platinumRatePerGram: currentRates.platinum?.ratePerGram ?? undefined,
     },
   });
 
@@ -50,10 +51,11 @@ export function RatesForm({ currentRates }: { currentRates: CurrentRates }) {
   return (
     <Card className="max-w-lg border-gold/30 ring-1 ring-gold/10">
       <CardHeader>
-        <CardTitle>Update Today&apos;s Rate</CardTitle>
+        <CardTitle>Manual Override</CardTitle>
         <p className="text-xs text-muted-foreground">
-          Two numbers, one save — every product price on the site updates
-          instantly.
+          Type today&apos;s rates directly — every product price on the site
+          updates instantly. Platinum is optional; leave it blank to leave
+          the current platinum rate untouched.
         </p>
       </CardHeader>
       <CardContent>
@@ -107,6 +109,30 @@ export function RatesForm({ currentRates }: { currentRates: CurrentRates }) {
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="platinumRatePerGram"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Platinum (950) ₹/gram (optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Leave blank to skip"
+                      {...field}
+                      value={
+                        typeof field.value === "number" ||
+                        typeof field.value === "string"
+                          ? field.value
+                          : ""
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Button
               type="submit"
               variant="gold"

@@ -17,6 +17,8 @@ const stylingStorySchema = new Schema(
     title: { type: localizedTextSchema(), required: true },
     subtitle: { type: localizedTextSchema(false) },
     coverImageUrl: { type: String, required: true },
+    /** Optional — when set, the storefront card plays this instead of the cover image (which stays required as the fallback/poster). */
+    videoUrl: { type: String },
     sortOrder: { type: Number, default: 0 },
     isPublished: { type: Boolean, default: false },
     deletedAt: deletedAtField,

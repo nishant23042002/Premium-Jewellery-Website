@@ -17,6 +17,9 @@ export const stylingStoryFormSchema = z.object({
     })
     .optional(),
   coverImageUrl: z.string().url("Choose a cover image"),
+  // Empty string (the field's unset default) must pass — only validate as a
+  // URL once the admin has actually entered something.
+  videoUrl: z.union([z.string().url(), z.literal("")]).optional(),
   sortOrder: z.coerce.number().int().default(0),
   isPublished: z.boolean().default(false),
 });

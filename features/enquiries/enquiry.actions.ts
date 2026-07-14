@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { requirePermission } from "@/lib/auth/permissions";
 import { DEFAULT_TENANT_ID } from "@/lib/db/schema-helpers";
 import { EnquiryModel } from "@/features/enquiries/enquiry.model";
+import { ProductModel } from "@/features/products/product.model";
 import {
   enquiryFormSchema,
   type EnquiryFormValues,
@@ -55,7 +56,7 @@ export async function createEnquiry(
     headerList.get("x-forwarded-for") ??
     headerList.get("x-real-ip") ??
     "unknown";
-  const rateLimit = checkRateLimit(`enquiry-action:${ip}`, {
+  const rateLimit = await checkRateLimit(`enquiry-action:${ip}`, {
     limit: 5,
     windowMs: 60_000,
   });
@@ -104,7 +105,39 @@ export async function listEnquiries(
   if (status) filter.status = status;
 
   const docs = await EnquiryModel.find(filter).sort({ createdAt: -1 }).lean();
-  return docs.map(toEnquiry);
+  const enquiries = docs.map(toEnquiry);
+
+  // Best-effort live join — enquiries only store a productId, so this looks
+  // up each referenced product's current name/image for display. A product
+  // deleted since the enquiry came in is simply left unlabeled, not an error.
+  const productIds = Array.from(
+    new Set(enquiries.map((e) => e.productId).filter((id): id is string => !!id)),
+  );
+  if (productIds.length === 0) return enquiries;
+
+  const products = await ProductModel.find({
+    _id: { $in: productIds },
+    tenantId: DEFAULT_TENANT_ID,
+  })
+    .select("name images")
+    .lean();
+  const productById = new Map(
+    products.map((p) => [
+      String(p._id),
+      { name: p.name.en, imageUrl: p.images?.[0]?.url },
+    ]),
+  );
+
+  return enquiries.map((enquiry) => {
+    const product = enquiry.productId
+      ? productById.get(enquiry.productId)
+      : undefined;
+    return {
+      ...enquiry,
+      productName: product?.name,
+      productImageUrl: product?.imageUrl,
+    };
+  });
 }
 
 export async function updateEnquiryStatus(

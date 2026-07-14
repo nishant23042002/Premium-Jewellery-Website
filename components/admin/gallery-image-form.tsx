@@ -76,7 +76,7 @@ export function GalleryImageForm({ image }: { image?: GalleryImage }) {
             {imageUrl && (
               <Image
                 src={imageUrl}
-                alt=""
+                alt="Current gallery image"
                 width={80}
                 height={80}
                 className="size-20 rounded-lg border border-border object-cover"

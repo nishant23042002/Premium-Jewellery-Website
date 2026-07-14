@@ -3,6 +3,7 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { ProductForm } from "@/components/admin/product-form";
 import { getProductByIdForAdmin } from "@/features/products/product.actions";
 import { listCategories } from "@/features/categories/category.actions";
+import { getCurrentRates } from "@/features/metal-rates/metal-rate.actions";
 import { safeQuery } from "@/lib/db/safe-query";
 import { ROUTES } from "@/constants/routes";
 
@@ -15,9 +16,10 @@ export default async function EditProductPage({
 }: EditProductPageProps) {
   const { id } = await params;
 
-  const [product, categories] = await Promise.all([
+  const [product, categories, currentRates] = await Promise.all([
     safeQuery(() => getProductByIdForAdmin(id), null),
     safeQuery(() => listCategories({ publishedOnly: false }), []),
+    safeQuery(() => getCurrentRates(), { gold: null, silver: null, platinum: null }),
   ]);
 
   if (!product) notFound();
@@ -31,7 +33,11 @@ export default async function EditProductPage({
           { label: product.name.en },
         ]}
       />
-      <ProductForm product={product} categories={categories} />
+      <ProductForm
+        product={product}
+        categories={categories}
+        currentRates={currentRates}
+      />
     </div>
   );
 }

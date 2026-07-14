@@ -17,6 +17,11 @@ const CSP = [
   `script-src 'self' 'unsafe-inline' https://checkout.razorpay.com${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://res.cloudinary.com https://*.razorpay.com",
+  // Styling Story cover videos are served directly from Cloudinary (no
+  // same-origin proxy the way next/image proxies images) — without this,
+  // "media-src" falls back to default-src 'self' and every browser silently
+  // blocks the <video> tag's cross-origin src as a CSP violation.
+  "media-src 'self' https://res.cloudinary.com",
   "font-src 'self' data:",
   // The Razorpay SDK calls its own API/analytics endpoints from the page.
   "connect-src 'self' https://*.razorpay.com",

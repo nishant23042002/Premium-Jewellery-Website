@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 interface GridProps extends React.ComponentProps<"div"> {
   /** Columns per breakpoint — defaults to a 2 / 3 / 4-up catalogue rhythm. */
-  cols?: { base?: number; sm?: number; md?: number; lg?: number };
+  cols?: { base?: number; sm?: number; md?: number; lg?: number; xl?: number };
   gap?: "sm" | "md" | "lg";
 }
 
@@ -48,6 +48,14 @@ const LG_COLS: Record<number, string> = {
   5: "lg:grid-cols-5",
   6: "lg:grid-cols-6",
 };
+const XL_COLS: Record<number, string> = {
+  1: "xl:grid-cols-1",
+  2: "xl:grid-cols-2",
+  3: "xl:grid-cols-3",
+  4: "xl:grid-cols-4",
+  5: "xl:grid-cols-5",
+  6: "xl:grid-cols-6",
+};
 
 /**
  * Responsive CSS grid for catalogue/collection layouts (Phase 2 "Grid
@@ -70,6 +78,7 @@ export function Grid({
         cols.sm && SM_COLS[cols.sm],
         cols.md && MD_COLS[cols.md],
         cols.lg && LG_COLS[cols.lg],
+        cols.xl && XL_COLS[cols.xl],
         GAP_CLASSES[gap],
         className,
       )}

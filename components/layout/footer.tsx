@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/accordion";
 import { BackToTopButton } from "@/components/layout/back-to-top-button";
 import { FOOTER_NAV, ROUTES, SITE } from "@/constants";
+import { t } from "@/lib/i18n/dictionary";
 import type { Locale } from "@/types/common";
 import type { CmsPage } from "@/features/pages/page.types";
 
@@ -140,7 +141,7 @@ export function Footer({
         className="mb-16 flex flex-col items-center justify-between gap-3 border-t border-border py-4 text-center sm:flex-row sm:text-left"
       >
         <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} {SITE.name}. All rights reserved.
+          © {new Date().getFullYear()} {SITE.name}. {t("allRightsReserved", locale)}
         </p>
         <BackToTopButton />
       </Container>

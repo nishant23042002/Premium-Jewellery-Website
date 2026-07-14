@@ -146,7 +146,7 @@ export function CategoryForm({ category, categories }: CategoryFormProps) {
             {imageUrl && (
               <Image
                 src={imageUrl}
-                alt=""
+                alt="Current category image"
                 width={56}
                 height={56}
                 className="size-14 rounded-lg border border-border object-cover"

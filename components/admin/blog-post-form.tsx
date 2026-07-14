@@ -171,7 +171,7 @@ export function BlogPostForm({ post }: { post?: BlogPost }) {
             {coverImageUrl && (
               <Image
                 src={coverImageUrl}
-                alt=""
+                alt="Current cover image"
                 width={56}
                 height={56}
                 className="size-14 rounded-lg border border-border object-cover"

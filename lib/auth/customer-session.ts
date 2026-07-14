@@ -29,7 +29,13 @@ export async function getCustomerSession(): Promise<CustomerSessionPayload | nul
   const cookieStore = await cookies();
   const token = cookieStore.get(CUSTOMER_SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
-  return verifySessionToken<CustomerSessionPayload>(token);
+
+  const session = verifySessionToken<CustomerSessionPayload>(token);
+  // Runtime check, not just a type — admin and customer tokens share a
+  // signing secret, so this is what actually stops an admin session token
+  // from being replayed here (see lib/auth/session.ts for the mirror check).
+  if (!session || session.kind !== "customer") return null;
+  return session;
 }
 
 export async function destroyCustomerSession(): Promise<void> {

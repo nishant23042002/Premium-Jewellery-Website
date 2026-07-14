@@ -17,6 +17,7 @@ import {
   type PopularSearch,
 } from "@/features/search-analytics/search-query.actions";
 import { useRecentlyViewedStore } from "@/store/zustand/use-recently-viewed-store";
+import { useRecentSearchesStore } from "@/store/zustand/use-recent-searches-store";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatINR } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -61,6 +62,49 @@ function ProductRow({
   );
 }
 
+/** Shown when a query has zero matches — offers popular-search terms (excluding the failed query itself) as a next step instead of a dead end. */
+function NoResultsSuggestions({
+  query,
+  popularSearches,
+  onSelect,
+}: {
+  query: string;
+  popularSearches: PopularSearch[];
+  onSelect: (query: string) => void;
+}) {
+  const suggestions = popularSearches.filter(
+    (p) => p.query.toLowerCase() !== query.toLowerCase(),
+  );
+
+  return (
+    <div className="py-6 text-center">
+      <p className="text-sm text-muted-foreground">
+        No results for &ldquo;{query}&rdquo;.
+      </p>
+      {suggestions.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Try one of these instead
+          </p>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion.query}
+                type="button"
+                onClick={() => onSelect(suggestion.query)}
+                className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs capitalize transition-colors hover:border-gold/40 hover:bg-gold/5"
+              >
+                <TrendingUp className="size-3 text-gold-dark" />
+                {suggestion.query}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface HeaderSearchProps {
   /**
    * "icon" (default) — the desktop icon button that toggles a floating
@@ -95,6 +139,9 @@ export function HeaderSearch({
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
   const recentlyViewedIds = useRecentlyViewedStore((s) => s.productIds);
+  const recentSearches = useRecentSearchesStore((s) => s.queries);
+  const trackRecentSearch = useRecentSearchesStore((s) => s.track);
+  const removeRecentSearch = useRecentSearchesStore((s) => s.remove);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -164,6 +211,7 @@ export function HeaderSearch({
     // "the user meant this term" now that there's no dedicated search-page
     // submit to hang this on.
     logSearchQuery(trimmed);
+    trackRecentSearch(trimmed);
     listProducts({ query: trimmed, pageSize: RESULT_LIMIT })
       .then((result) => {
         if (cancelled) return;
@@ -176,7 +224,7 @@ export function HeaderSearch({
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, trackRecentSearch]);
 
   function close() {
     setOpen(false);
@@ -222,7 +270,10 @@ export function HeaderSearch({
   return (
     <div
       ref={containerRef}
-      className={cn("relative", variant === "bar" && "w-full", className)}
+      className={cn(
+        variant === "bar" && "relative w-full",
+        className,
+      )}
     >
       {variant === "icon" ? (
         <Button
@@ -240,134 +291,175 @@ export function HeaderSearch({
       )}
 
       {open && variant === "icon" && (
-        <div className="absolute top-full right-0 z-50 mt-2 w-[min(44rem,90vw)] overflow-hidden rounded-2xl border border-border bg-popover shadow-xl">
-          <div className="border-b border-border p-4">{inputField}</div>
+        // Anchored to the sticky <header> (the nearest positioned ancestor,
+        // since this wrapper is no longer `relative`) instead of this tiny
+        // icon's own box — inset-x-0 + justify-end + px-4 keeps it clamped
+        // to the viewport at every width, so it can never overflow off-screen
+        // the way anchoring to the icon itself did on narrower desktop/tablet
+        // widths where the icon sits left-of-center in the header.
+        <div className="absolute inset-x-0 top-full z-50 mt-2 flex justify-end px-4">
+          <div className="w-[min(44rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-popover shadow-xl">
+            <div className="border-b border-border p-4">{inputField}</div>
 
-          <div className="max-h-[32rem] overflow-y-auto p-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="size-5 animate-spin" />
-              </div>
-            ) : !trimmedQuery ? (
-              recentlyViewed.length > 0 ||
-              popularSearches.length > 0 ||
-              trending.length > 0 ? (
-                <div className="grid gap-6 sm:grid-cols-[minmax(0,11rem)_1fr]">
-                  <div className="space-y-5">
-                    {recentlyViewed.length > 0 && (
-                      <div>
-                        <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                          <Clock className="size-3" />
-                          Continue Browsing
-                        </p>
-                        <ul className="space-y-1">
-                          {recentlyViewed.map(({ product, price }) => (
-                            <li key={product.id}>
-                              <ProductRow
-                                product={product}
-                                price={price}
-                                onNavigate={close}
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+            <div className="max-h-[32rem] overflow-y-auto p-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin" />
+                </div>
+              ) : !trimmedQuery ? (
+                recentSearches.length > 0 ||
+                recentlyViewed.length > 0 ||
+                popularSearches.length > 0 ||
+                trending.length > 0 ? (
+                  <div className="grid gap-6 sm:grid-cols-[minmax(0,11rem)_1fr]">
+                    <div className="space-y-5">
+                      {recentSearches.length > 0 && (
+                        <div>
+                          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                            <Clock className="size-3" />
+                            Recent Searches
+                          </p>
+                          <ul className="space-y-1">
+                            {recentSearches.map((recent) => (
+                              <li key={recent} className="group flex items-center">
+                                <button
+                                  type="button"
+                                  onClick={() => setQuery(recent)}
+                                  className="flex-1 truncate rounded-md px-1.5 py-1 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                >
+                                  {recent}
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label={`Remove "${recent}" from recent searches`}
+                                  onClick={() => removeRecentSearch(recent)}
+                                  className="opacity-0 shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground group-hover:opacity-100"
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
-                    {popularSearches.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                          Popular Searches
+                      {recentlyViewed.length > 0 && (
+                        <div>
+                          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                            <Clock className="size-3" />
+                            Continue Browsing
+                          </p>
+                          <ul className="space-y-1">
+                            {recentlyViewed.map(({ product, price }) => (
+                              <li key={product.id}>
+                                <ProductRow
+                                  product={product}
+                                  price={price}
+                                  onNavigate={close}
+                                />
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {popularSearches.length > 0 && (
+                        <div>
+                          <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                            Popular Searches
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {popularSearches.map((popular) => (
+                              <button
+                                key={popular.query}
+                                type="button"
+                                onClick={() => setQuery(popular.query)}
+                                className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs capitalize transition-colors hover:border-gold/40 hover:bg-gold/5"
+                              >
+                                <TrendingUp className="size-3 text-gold-dark" />
+                                {popular.query}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {trending.length > 0 && (
+                      <div className="border-t border-border pt-5 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+                        <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                          Trending Products
                         </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {popularSearches.map((popular) => (
-                            <button
-                              key={popular.query}
-                              type="button"
-                              onClick={() => setQuery(popular.query)}
-                              className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs capitalize transition-colors hover:border-gold/40 hover:bg-gold/5"
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                          {trending.map(({ product, price }) => (
+                            <Link
+                              key={product.id}
+                              href={ROUTES.product(product.slug)}
+                              onClick={close}
+                              className="group rounded-lg p-1.5 transition-colors hover:bg-muted"
                             >
-                              <TrendingUp className="size-3 text-gold-dark" />
-                              {popular.query}
-                            </button>
+                              <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+                                {product.images[0] && (
+                                  <Image
+                                    src={product.images[0].url}
+                                    alt={
+                                      product.images[0].altText?.en ??
+                                      product.name.en
+                                    }
+                                    fill
+                                    sizes="140px"
+                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                  />
+                                )}
+                              </div>
+                              <p className="mt-1.5 truncate text-xs font-medium">
+                                {product.name.en}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {price.isRatePending
+                                  ? "Price on request"
+                                  : formatINR(price.total)}
+                              </p>
+                            </Link>
                           ))}
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {trending.length > 0 && (
-                    <div className="border-t border-border pt-5 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
-                      <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Trending Products
-                      </p>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                        {trending.map(({ product, price }) => (
-                          <Link
-                            key={product.id}
-                            href={ROUTES.product(product.slug)}
-                            onClick={close}
-                            className="group rounded-lg p-1.5 transition-colors hover:bg-muted"
-                          >
-                            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-                              {product.images[0] && (
-                                <Image
-                                  src={product.images[0].url}
-                                  alt={
-                                    product.images[0].altText?.en ??
-                                    product.name.en
-                                  }
-                                  fill
-                                  sizes="140px"
-                                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                                />
-                              )}
-                            </div>
-                            <p className="mt-1.5 truncate text-xs font-medium">
-                              {product.name.en}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {price.isRatePending
-                                ? "Price on request"
-                                : formatINR(price.total)}
-                            </p>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    Try searching for a category like &ldquo;bridal&rdquo; or a
+                    metal type like &ldquo;gold&rdquo;.
+                  </p>
+                )
+              ) : results.length === 0 ? (
+                <NoResultsSuggestions
+                  query={trimmedQuery}
+                  popularSearches={popularSearches}
+                  onSelect={setQuery}
+                />
               ) : (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Try searching for a category like &ldquo;bridal&rdquo; or a
-                  metal type like &ldquo;gold&rdquo;.
-                </p>
-              )
-            ) : results.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No results for &ldquo;{trimmedQuery}&rdquo;.
+                <ul className="grid gap-1 sm:grid-cols-2">
+                  {results.map(({ product, price }) => (
+                    <li key={product.id}>
+                      <ProductRow
+                        product={product}
+                        price={price}
+                        onNavigate={close}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {trimmedQuery && total > results.length && (
+              <p className="border-t border-border px-4 py-2.5 text-center text-xs text-muted-foreground">
+                Showing {results.length} of {total} — refine your search to
+                narrow it down.
               </p>
-            ) : (
-              <ul className="grid gap-1 sm:grid-cols-2">
-                {results.map(({ product, price }) => (
-                  <li key={product.id}>
-                    <ProductRow
-                      product={product}
-                      price={price}
-                      onNavigate={close}
-                    />
-                  </li>
-                ))}
-              </ul>
             )}
           </div>
-
-          {trimmedQuery && total > results.length && (
-            <p className="border-t border-border px-4 py-2.5 text-center text-xs text-muted-foreground">
-              Showing {results.length} of {total} — refine your search to narrow
-              it down.
-            </p>
-          )}
         </div>
       )}
 
@@ -380,6 +472,36 @@ export function HeaderSearch({
               </div>
             ) : !trimmedQuery ? (
               <div className="space-y-4">
+                {recentSearches.length > 0 && (
+                  <div>
+                    <p className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                      <Clock className="size-3" />
+                      Recent Searches
+                    </p>
+                    <ul className="space-y-1">
+                      {recentSearches.map((recent) => (
+                        <li key={recent} className="group flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => setQuery(recent)}
+                            className="flex-1 truncate rounded-md px-1.5 py-1 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            {recent}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Remove "${recent}" from recent searches`}
+                            onClick={() => removeRecentSearch(recent)}
+                            className="opacity-0 shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground group-hover:opacity-100"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {recentlyViewed.length > 0 && (
                   <div>
                     <p className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -462,7 +584,8 @@ export function HeaderSearch({
                   </div>
                 )}
 
-                {recentlyViewed.length === 0 &&
+                {recentSearches.length === 0 &&
+                  recentlyViewed.length === 0 &&
                   popularSearches.length === 0 &&
                   trending.length === 0 && (
                     <p className="px-1 py-4 text-sm text-muted-foreground">
@@ -472,9 +595,11 @@ export function HeaderSearch({
                   )}
               </div>
             ) : results.length === 0 ? (
-              <p className="px-1 py-4 text-sm text-muted-foreground">
-                No results for &ldquo;{trimmedQuery}&rdquo;.
-              </p>
+              <NoResultsSuggestions
+                query={trimmedQuery}
+                popularSearches={popularSearches}
+                onSelect={setQuery}
+              />
             ) : (
               <ul className="space-y-1">
                 {results.map(({ product, price }) => (

@@ -59,6 +59,7 @@ export function CustomerNotesForm({
               <button
                 type="button"
                 onClick={() => setTags(tags.filter((t) => t !== tag))}
+                aria-label={`Remove tag ${tag}`}
                 className="ml-0.5 rounded-full p-0.5 hover:bg-muted"
               >
                 <X className="size-3" />

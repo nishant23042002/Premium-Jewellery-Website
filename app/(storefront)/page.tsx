@@ -28,6 +28,7 @@ import { getHomepageConfig } from "@/features/homepage/homepage-config.actions";
 import { DEFAULT_HOMEPAGE_CONFIG } from "@/features/homepage/homepage-config.types";
 import { safeQuery } from "@/lib/db/safe-query";
 import { canonicalFor } from "@/lib/seo/config";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
 import { ROUTES, SITE } from "@/constants";
 
 export const metadata: Metadata = {
@@ -120,6 +121,7 @@ export default async function HomePage() {
     homepageConfig,
     stylingStories,
     heroSlides,
+    locale,
   ] = await Promise.all([
     safeQuery(() => listCategories(), []),
     safeQuery(() => listCollections(), []),
@@ -151,6 +153,7 @@ export default async function HomePage() {
     safeQuery(() => getHomepageConfig(), DEFAULT_HOMEPAGE_CONFIG),
     safeQuery(() => listStylingStoriesResolved(), []),
     safeQuery(() => listHeroSlides({ publishedOnly: true }), []),
+    getStorefrontLocale(),
   ]);
 
   const spotlightCollections = collections.filter((c) => c.isFeatured);
@@ -267,6 +270,7 @@ export default async function HomePage() {
                       key={product.id}
                       product={product}
                       price={price}
+                      locale={locale}
                     />
                   ))}
                 </Grid>
@@ -302,6 +306,7 @@ export default async function HomePage() {
                     key={product.id}
                     product={product}
                     price={price}
+                    locale={locale}
                   />
                 ))}
               </Grid>
@@ -333,6 +338,7 @@ export default async function HomePage() {
                     key={product.id}
                     product={product}
                     price={price}
+                    locale={locale}
                   />
                 ))}
               </Grid>

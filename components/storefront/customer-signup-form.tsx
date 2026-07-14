@@ -15,6 +15,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  AuthDivider,
+  GoogleSignInButton,
+} from "@/components/storefront/google-signin-button";
 import { signupAction } from "@/features/customer-auth/customer-auth.actions";
 import {
   signupFormSchema,
@@ -25,15 +29,20 @@ import { toast } from "@/lib/toast";
 import { ROUTES } from "@/constants/routes";
 
 interface CustomerSignupFormProps {
+  redirectTo?: string;
   /** When provided (e.g. inside a modal), called instead of navigating away on success. */
   onSuccess?: () => void;
   /** When provided (e.g. inside a modal with tabs), renders a tab-switch button instead of a page link. */
   onSwitchToLogin?: () => void;
+  /** Background the form renders on — passed through to AuthDivider so its label matches. */
+  surfaceClassName?: string;
 }
 
 export function CustomerSignupForm({
+  redirectTo = ROUTES.account,
   onSuccess,
   onSwitchToLogin,
+  surfaceClassName,
 }: CustomerSignupFormProps = {}) {
   const router = useRouter();
 
@@ -53,13 +62,15 @@ export function CustomerSignupForm({
     if (onSuccess) {
       onSuccess();
     } else {
-      router.push(ROUTES.account);
+      router.push(redirectTo);
     }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <GoogleSignInButton redirectTo={redirectTo} label="Sign up with Google" />
+        <AuthDivider surfaceClassName={surfaceClassName} />
         <FormField
           control={form.control}
           name="name"

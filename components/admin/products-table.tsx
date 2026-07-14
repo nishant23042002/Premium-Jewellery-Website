@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/components/common/data-table";
+import { CheckCircle2, ImageOff, Trash2, XCircle } from "lucide-react";
+import { DataTable, type BulkAction } from "@/components/common/data-table";
 import { DataTableRowActions } from "@/components/admin/data-table-row-actions";
 import { PublishToggle } from "@/components/admin/publish-toggle";
 import { AvailabilityBadge } from "@/components/storefront/availability-badge";
@@ -46,12 +47,14 @@ const columns: ColumnDef<ProductWithPrice>[] = [
         <Image
           src={image.url}
           alt=""
-          width={40}
-          height={40}
-          className="size-10 rounded-md border border-border object-cover"
+          width={56}
+          height={56}
+          className="size-14 rounded-lg border border-border object-cover"
         />
       ) : (
-        <div className="size-10 rounded-md bg-muted" />
+        <div className="flex size-14 items-center justify-center rounded-lg bg-muted">
+          <ImageOff className="size-4 text-muted-foreground/50" />
+        </div>
       );
     },
   },
@@ -116,6 +119,50 @@ const columns: ColumnDef<ProductWithPrice>[] = [
   },
 ];
 
+async function bulkSetPublished(rows: ProductWithPrice[], next: boolean) {
+  const results = await Promise.all(
+    rows.map(({ product }) =>
+      updateProduct(product.id, {
+        ...toProductFormInput(product),
+        isPublished: next,
+      }),
+    ),
+  );
+  return {
+    successCount: results.filter((r) => r.success).length,
+    failureCount: results.filter((r) => !r.success).length,
+  };
+}
+
+const bulkActions: BulkAction<ProductWithPrice>[] = [
+  {
+    label: "Publish",
+    icon: CheckCircle2,
+    onRun: (rows) => bulkSetPublished(rows, true),
+  },
+  {
+    label: "Unpublish",
+    icon: XCircle,
+    onRun: (rows) => bulkSetPublished(rows, false),
+  },
+  {
+    label: "Delete",
+    icon: Trash2,
+    variant: "destructive",
+    confirmDescription:
+      "This moves the selected products to the Recycle Bin — you can restore them later, or delete permanently from there.",
+    onRun: async (rows) => {
+      const results = await Promise.all(
+        rows.map(({ product }) => deleteProduct(product.id)),
+      );
+      return {
+        successCount: results.filter((r) => r.success).length,
+        failureCount: results.filter((r) => !r.success).length,
+      };
+    },
+  },
+];
+
 export function ProductsTable({ data }: { data: ProductWithPrice[] }) {
   return (
     <DataTable
@@ -123,6 +170,19 @@ export function ProductsTable({ data }: { data: ProductWithPrice[] }) {
       data={data}
       searchColumnId="name"
       searchPlaceholder="Search products..."
+      getRowId={(row) => row.product.id}
+      bulkActions={bulkActions}
+      exportFileName="products"
+      getExportRow={({ product, price }) => ({
+        SKU: product.skuCode,
+        Name: product.name.en,
+        Metal: `${product.metalType} ${product.purity}`,
+        Price: price.isRatePending ? "Rate pending" : price.total,
+        Availability: product.availability,
+        Published: product.isPublished ? "Yes" : "No",
+      })}
+      emptyTitle="No products yet"
+      emptyDescription="Add your first product to see it listed here."
     />
   );
 }

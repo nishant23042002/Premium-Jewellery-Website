@@ -26,6 +26,18 @@ export function PriceBreakdown({ price }: PriceBreakdownProps) {
     );
   }
 
+  // A locked/fixed price isn't formula-derived, so there's nothing
+  // meaningful to itemize — the line items above would be zeroed and
+  // wouldn't sum to the total, which reads as broken rather than simple.
+  if (price.isOverridden) {
+    return (
+      <div className="space-y-2">
+        <p className="font-heading text-3xl">{formatINR(price.total)}</p>
+        <p className="text-xs text-muted-foreground">Special price</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <p className="font-heading text-3xl">{formatINR(price.total)}</p>
@@ -45,6 +57,18 @@ export function PriceBreakdown({ price }: PriceBreakdownProps) {
               value={formatINR(price.metalValue)}
             />
             <Row label="Making charge" value={formatINR(price.makingCharge)} />
+            {price.stoneValue > 0 && (
+              <Row label="Stone value" value={formatINR(price.stoneValue)} />
+            )}
+            {price.certificationCost > 0 && (
+              <Row
+                label="Certification"
+                value={formatINR(price.certificationCost)}
+              />
+            )}
+            {price.customCharges > 0 && (
+              <Row label="Other charges" value={formatINR(price.customCharges)} />
+            )}
             <Row label="Subtotal" value={formatINR(price.subtotal)} />
             <Row label="GST" value={formatINR(price.gstAmount)} />
             <Row label="Total" value={formatINR(price.total)} emphasis />

@@ -23,7 +23,7 @@ export const SITE = {
   phone: "+91 73854 44000",
   phoneDisplay: "073854 44000",
   whatsappNumber: "917385444000", // digits only, for wa.me links — confirm before launch
-  adminEmail: "owner@ambikajewellers.example", // placeholder — confirm the store's real inbox before launch
+  adminEmail: "nishantsapkal2304@gmail.com",
 
   rating: {
     value: 4.9,

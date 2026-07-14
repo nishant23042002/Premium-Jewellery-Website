@@ -1,11 +1,6 @@
-/**
- * Minimal in-memory fixed-window rate limiter for public write endpoints
- * (enquiry form, etc. — PRD §17). Good enough for a single-region, low-QPS
- * showroom site; if traffic grows or the deployment goes multi-instance,
- * swap this for a shared store (Vercel Firewall rate limiting or Upstash
- * Redis) without changing call sites.
- */
-const hits = new Map<string, { count: number; resetAt: number }>();
+import "server-only";
+import { connectToDatabase } from "@/lib/db/mongoose";
+import { RateLimitModel } from "@/lib/api/rate-limit.model";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -13,27 +8,43 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-export function checkRateLimit(
+/**
+ * MongoDB-backed fixed-window rate limiter for public write endpoints and
+ * login brute-force protection. Correct across multiple serverless
+ * instances (Vercel Fluid Compute) — the previous in-memory Map only saw
+ * hits landing on the same warm instance, so the effective limit scaled
+ * with however many instances happened to be warm. A single atomic
+ * aggregation-pipeline update handles the create/reset/increment cases in
+ * one round trip (no read-then-write race between concurrent requests), and
+ * a TTL index on `resetAt` cleans up expired windows on its own.
+ */
+export async function checkRateLimit(
   key: string,
   { limit = 5, windowMs = 60_000 }: { limit?: number; windowMs?: number } = {},
-): RateLimitResult {
-  const now = Date.now();
-  const entry = hits.get(key);
+): Promise<RateLimitResult> {
+  await connectToDatabase();
 
-  if (!entry || entry.resetAt <= now) {
-    const resetAt = now + windowMs;
-    hits.set(key, { count: 1, resetAt });
-    return { allowed: true, remaining: limit - 1, resetAt };
-  }
-
-  if (entry.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
-  }
-
-  entry.count += 1;
-  return {
-    allowed: true,
-    remaining: limit - entry.count,
-    resetAt: entry.resetAt,
+  const now = new Date();
+  const newResetAt = new Date(now.getTime() + windowMs);
+  const windowExpired = {
+    $or: [{ $eq: ["$resetAt", null] }, { $lte: ["$resetAt", now] }],
   };
+
+  const doc = await RateLimitModel.findOneAndUpdate(
+    { key },
+    [
+      {
+        $set: {
+          count: { $cond: [windowExpired, 1, { $add: ["$count", 1] }] },
+          resetAt: { $cond: [windowExpired, newResetAt, "$resetAt"] },
+        },
+      },
+    ],
+    { upsert: true, returnDocument: "after", updatePipeline: true },
+  );
+
+  const resetAtMs = doc.resetAt.getTime();
+  return doc.count <= limit
+    ? { allowed: true, remaining: limit - doc.count, resetAt: resetAtMs }
+    : { allowed: false, remaining: 0, resetAt: resetAtMs };
 }

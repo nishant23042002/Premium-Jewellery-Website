@@ -36,14 +36,10 @@ export async function loginAction(
   // limit alone (spraying many emails from one IP, or one email from many
   // IPs/proxies). 5 attempts / 15 min, matching the login form's own retry
   // expectations for a genuine mistyped password.
-  const emailLimit = checkRateLimit(`login:email:${email}`, {
-    limit: 5,
-    windowMs: 15 * 60_000,
-  });
-  const ipLimit = checkRateLimit(`login:ip:${ip}`, {
-    limit: 20,
-    windowMs: 15 * 60_000,
-  });
+  const [emailLimit, ipLimit] = await Promise.all([
+    checkRateLimit(`login:email:${email}`, { limit: 5, windowMs: 15 * 60_000 }),
+    checkRateLimit(`login:ip:${ip}`, { limit: 20, windowMs: 15 * 60_000 }),
+  ]);
   if (!emailLimit.allowed || !ipLimit.allowed) {
     logger.warn("loginAction", "rate limited", { email, ip });
     return {
@@ -82,6 +78,7 @@ export async function loginAction(
     email: admin.email,
     role: admin.role as "owner" | "staff",
     roleSlug: admin.roleSlug ?? undefined,
+    kind: "admin",
   });
 
   return { success: true, data: { role: admin.role } };

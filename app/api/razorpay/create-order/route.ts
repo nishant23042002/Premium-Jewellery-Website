@@ -4,6 +4,9 @@ import { getRazorpayClient } from "@/lib/razorpay/client";
 import { getCartSummary } from "@/features/cart/cart.actions";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { logger } from "@/lib/logger";
+import { connectToDatabase } from "@/lib/db/mongoose";
+import { DEFAULT_TENANT_ID } from "@/lib/db/schema-helpers";
+import { CheckoutIntentModel } from "@/features/orders/checkout-intent.model";
 import { createRazorpayOrderSchema } from "@/features/orders/order.schema";
 
 /**
@@ -11,7 +14,13 @@ import { createRazorpayOrderSchema } from "@/features/orders/order.schema";
  * server-side — the client only supplies address/contact details, never an
  * amount. This is the only place a Razorpay order gets created; the actual
  * app Order document isn't created here (that only happens after the
- * payment signature is verified in /api/razorpay/verify).
+ * payment signature is verified in /api/razorpay/verify, or reconciled by
+ * /api/razorpay/webhook if that callback never fires).
+ *
+ * The shipping/billing address supplied here is also stashed in
+ * CheckoutIntentModel, keyed by this Razorpay order id — the webhook fallback
+ * has no other way to know where to ship an order it's reconciling, since
+ * that context otherwise only exists in the client's /verify request body.
  */
 export async function POST(request: Request) {
   let session;
@@ -21,7 +30,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const rateLimit = checkRateLimit(`razorpay-create-order:${session.sub}`, {
+  const rateLimit = await checkRateLimit(`razorpay-create-order:${session.sub}`, {
     limit: 10,
     windowMs: 15 * 60_000,
   });
@@ -72,6 +81,16 @@ export async function POST(request: Request) {
       // reference label, not an identifier Razorpay relies on for anything.
       receipt: `rcpt_${session.sub.slice(-8)}_${Date.now().toString(36)}`,
       notes: { customerId: session.sub, email: parsed.data.email },
+    });
+
+    await connectToDatabase();
+    await CheckoutIntentModel.create({
+      tenantId: DEFAULT_TENANT_ID,
+      customerId: session.sub,
+      razorpayOrderId: order.id,
+      email: parsed.data.email,
+      shippingAddress: parsed.data.shippingAddress,
+      billingAddress: parsed.data.billingAddress,
     });
 
     return NextResponse.json({

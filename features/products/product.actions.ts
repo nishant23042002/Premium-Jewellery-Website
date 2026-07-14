@@ -1,11 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
+import { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db/mongoose";
 import { requireAdmin } from "@/lib/auth/session";
 import { requirePermission } from "@/lib/auth/permissions";
 import { DEFAULT_TENANT_ID, NOT_DELETED_FILTER } from "@/lib/db/schema-helpers";
-import { calculatePrice } from "@/lib/pricing/calculate-price";
+import { calculatePrice, rateForMetalType } from "@/lib/pricing/calculate-price";
 import { deleteImage } from "@/lib/cloudinary/upload";
 import { logger } from "@/lib/logger";
 import { ProductModel } from "@/features/products/product.model";
@@ -15,11 +16,19 @@ import {
 } from "@/features/products/product.schema";
 import { getCurrentRates } from "@/features/metal-rates/metal-rate.actions";
 import { logAudit } from "@/features/audit-logs/audit-log.actions";
+import { CollectionModel } from "@/features/collections/collection.model";
+import { ReservationModel } from "@/features/reservations/reservation.model";
+import { PageViewModel } from "@/features/visitor-analytics/page-view.model";
 import { ROUTES } from "@/constants/routes";
 import type { ActionResult, PaginatedResult } from "@/types/common";
 import type {
   PriceBreakdown,
   Product,
+} from "@/features/products/product.types";
+import {
+  BADGE_LIST_LIMIT,
+  NEW_ARRIVAL_WINDOW_DAYS,
+  TRENDING_WINDOW_DAYS,
 } from "@/features/products/product.types";
 
 interface ProductDoc {
@@ -37,6 +46,10 @@ interface ProductDoc {
   makingChargeType: Product["makingChargeType"];
   makingChargeValue: number;
   gstPercentage: number;
+  stoneValue?: number;
+  certificationCost?: number;
+  customCharges?: number;
+  priceOverride?: Product["priceOverride"];
   quantity?: number;
   images: Product["images"];
   videos?: Product["videos"];
@@ -67,6 +80,10 @@ function toProduct(doc: ProductDoc): Product {
     makingChargeType: doc.makingChargeType,
     makingChargeValue: doc.makingChargeValue,
     gstPercentage: doc.gstPercentage,
+    stoneValue: doc.stoneValue ?? 0,
+    certificationCost: doc.certificationCost ?? 0,
+    customCharges: doc.customCharges ?? 0,
+    priceOverride: doc.priceOverride ?? { locked: false },
     quantity: doc.quantity ?? 0,
     images: doc.images,
     videos: doc.videos ?? [],
@@ -87,31 +104,217 @@ export interface ProductWithPrice {
   price: PriceBreakdown;
 }
 
-export type ProductSort = "newest" | "price_asc" | "price_desc" | "name_asc";
+export type ProductSort =
+  | "newest"
+  | "price_asc"
+  | "price_desc"
+  | "name_asc"
+  | "weight_asc"
+  | "weight_desc"
+  | "popularity"
+  | "most_viewed"
+  | "most_reserved";
+
+/** Sort values that can't be pushed down to MongoDB — price is never stored (computed at render time), and view/reservation counts live in separate collections. Both require the bounded in-memory pass below. */
+const IN_MEMORY_SORTS = new Set<ProductSort>([
+  "price_asc",
+  "price_desc",
+  "popularity",
+  "most_viewed",
+  "most_reserved",
+]);
 
 export interface ListProductsParams {
   categoryId?: string;
+  /** Multi-select — OR'd together. Takes precedence over `categoryId` if both are given. */
+  categoryIds?: string[];
+  /** Filters to products belonging to this Collection (Collection.productIds). */
+  collectionId?: string;
   metalType?: Product["metalType"];
+  /** Multi-select — OR'd together. Takes precedence over `metalType` if both are given. */
+  metalTypes?: Product["metalType"][];
   /** Case-insensitive match against name/tags — powers the header search. */
   query?: string;
   featuredOnly?: boolean;
   /** e.g. "made_to_order" — powers the homepage's "Online Exclusive" section. */
   availability?: Product["availability"];
+  /** Multi-select — OR'd together. Takes precedence over `availability` if both are given. */
+  availabilities?: Product["availability"][];
+  priceMin?: number;
+  priceMax?: number;
+  weightMin?: number;
+  weightMax?: number;
+  /** Created within the last NEW_ARRIVAL_WINDOW_DAYS days. */
+  newArrivalOnly?: boolean;
   page?: number;
   pageSize?: number;
   publishedOnly?: boolean;
   sort?: ProductSort;
 }
 
-/** Upper bound when a price-based sort forces an in-memory pass (see below). Fine at boutique-catalogue scale. */
+/** Upper bound when a sort/filter forces an in-memory pass (price, view/reservation counts — see below). Fine at boutique-catalogue scale. */
 const MAX_SORT_SCAN = 500;
+
+/** Aggregates PageView hit counts for a set of product slugs over the last TRENDING_WINDOW_DAYS days, keyed by slug. Best-effort — an aggregation failure degrades to "no view data" rather than breaking the listing. */
+async function getViewCountsBySlug(
+  slugs: string[],
+): Promise<Map<string, number>> {
+  if (slugs.length === 0) return new Map();
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - TRENDING_WINDOW_DAYS);
+    const paths = slugs.map((slug) => `/product/${slug}`);
+
+    const groups: { _id: string; count: number }[] =
+      await PageViewModel.aggregate([
+        {
+          $match: {
+            tenantId: DEFAULT_TENANT_ID,
+            path: { $in: paths },
+            createdAt: { $gte: since },
+          },
+        },
+        { $group: { _id: "$path", count: { $sum: 1 } } },
+      ]);
+
+    return new Map(
+      groups.map((g) => [g._id.replace("/product/", ""), g.count]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+/** Aggregates reservation counts for a set of product ids over the last TRENDING_WINDOW_DAYS days, keyed by product id string. */
+async function getReservedCountsByProductId(
+  productIds: string[],
+): Promise<Map<string, number>> {
+  if (productIds.length === 0) return new Map();
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - TRENDING_WINDOW_DAYS);
+    const objectIds = productIds.map((id) => new Types.ObjectId(id));
+
+    const groups: { _id: string; count: number }[] =
+      await ReservationModel.aggregate([
+        {
+          $match: {
+            tenantId: DEFAULT_TENANT_ID,
+            createdAt: { $gte: since },
+            "products.productId": { $in: objectIds },
+          },
+        },
+        { $unwind: "$products" },
+        { $match: { "products.productId": { $in: objectIds } } },
+        { $group: { _id: "$products.productId", count: { $sum: 1 } } },
+      ]);
+
+    return new Map(groups.map((g) => [String(g._id), g.count]));
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * Catalogue-wide "Best Seller" set — top products by reservation count over
+ * the last TRENDING_WINDOW_DAYS days, restricted to currently published
+ * products (a product reserved before being unpublished shouldn't still
+ * show the badge). Recomputing this on every render would mean an extra
+ * aggregation per page load for a signal that doesn't need to be
+ * millisecond-fresh, so it's time-cached rather than tag-invalidated.
+ */
+export const getBestSellerProductIds = unstable_cache(
+  async (limit: number = BADGE_LIST_LIMIT): Promise<string[]> => {
+    await connectToDatabase();
+    try {
+      const since = new Date();
+      since.setDate(since.getDate() - TRENDING_WINDOW_DAYS);
+
+      const groups: { _id: string; count: number }[] =
+        await ReservationModel.aggregate([
+          { $match: { tenantId: DEFAULT_TENANT_ID, createdAt: { $gte: since } } },
+          { $unwind: "$products" },
+          { $group: { _id: "$products.productId", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: limit * 2 }, // headroom before filtering to published-only
+        ]);
+
+      const publishedIds = new Set(
+        (
+          await ProductModel.find({
+            tenantId: DEFAULT_TENANT_ID,
+            ...NOT_DELETED_FILTER,
+            isPublished: true,
+            _id: { $in: groups.map((g) => g._id) },
+          })
+            .select("_id")
+            .lean()
+        ).map((d) => String(d._id)),
+      );
+
+      return groups
+        .map((g) => String(g._id))
+        .filter((id) => publishedIds.has(id))
+        .slice(0, limit);
+    } catch {
+      return [];
+    }
+  },
+  ["best-seller-product-ids", DEFAULT_TENANT_ID],
+  { revalidate: 900 }, // 15 minutes — a popularity signal, not a live counter
+);
+
+/** Catalogue-wide "Trending" set — top products by page-view count over the last TRENDING_WINDOW_DAYS days. Same caching reasoning as getBestSellerProductIds. */
+export const getTrendingProductIds = unstable_cache(
+  async (limit: number = BADGE_LIST_LIMIT): Promise<string[]> => {
+    await connectToDatabase();
+    try {
+      const since = new Date();
+      since.setDate(since.getDate() - TRENDING_WINDOW_DAYS);
+
+      const groups: { _id: string; count: number }[] =
+        await PageViewModel.aggregate([
+          {
+            $match: {
+              tenantId: DEFAULT_TENANT_ID,
+              path: { $regex: "^/product/" },
+              createdAt: { $gte: since },
+            },
+          },
+          { $group: { _id: "$path", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: limit * 2 },
+        ]);
+
+      const slugs = groups.map((g) => g._id.replace("/product/", ""));
+      const docs = await ProductModel.find({
+        tenantId: DEFAULT_TENANT_ID,
+        ...NOT_DELETED_FILTER,
+        isPublished: true,
+        slug: { $in: slugs },
+      })
+        .select("_id slug")
+        .lean();
+
+      const idBySlug = new Map(docs.map((d) => [d.slug, String(d._id)]));
+      return slugs
+        .map((slug) => idBySlug.get(slug))
+        .filter((id): id is string => !!id)
+        .slice(0, limit);
+    } catch {
+      return [];
+    }
+  },
+  ["trending-product-ids", DEFAULT_TENANT_ID],
+  { revalidate: 900 },
+);
 
 /** Attaches the live calculated price (PRD §12) to a batch of products in one rate lookup. */
 async function attachPrices(products: Product[]): Promise<ProductWithPrice[]> {
   const rates = await getCurrentRates();
 
   return products.map((product) => {
-    const rate = product.metalType === "gold" ? rates.gold : rates.silver;
+    const rate = rateForMetalType(product.metalType, rates);
     return {
       product,
       price: calculatePrice({
@@ -121,6 +324,10 @@ async function attachPrices(products: Product[]): Promise<ProductWithPrice[]> {
         gstPercentage: product.gstPercentage,
         metalRatePerGram: rate?.ratePerGram ?? null,
         rateEffectiveDate: rate?.effectiveDate ?? null,
+        stoneValue: product.stoneValue,
+        certificationCost: product.certificationCost,
+        customCharges: product.customCharges,
+        override: product.priceOverride,
       }),
     };
   });
@@ -128,10 +335,19 @@ async function attachPrices(products: Product[]): Promise<ProductWithPrice[]> {
 
 export async function listProducts({
   categoryId,
+  categoryIds,
+  collectionId,
   metalType,
+  metalTypes,
   query,
   featuredOnly,
   availability,
+  availabilities,
+  priceMin,
+  priceMax,
+  weightMin,
+  weightMax,
+  newArrivalOnly,
   page = 1,
   pageSize = 20,
   publishedOnly = true,
@@ -143,11 +359,46 @@ export async function listProducts({
     tenantId: DEFAULT_TENANT_ID,
     ...NOT_DELETED_FILTER,
   };
-  if (categoryId) filter.categoryId = categoryId;
-  if (metalType) filter.metalType = metalType;
-  if (availability) filter.availability = availability;
+
+  const effectiveCategoryIds = categoryIds?.length ? categoryIds : categoryId ? [categoryId] : undefined;
+  if (effectiveCategoryIds) filter.categoryId = { $in: effectiveCategoryIds };
+
+  const effectiveMetalTypes = metalTypes?.length ? metalTypes : metalType ? [metalType] : undefined;
+  if (effectiveMetalTypes) filter.metalType = { $in: effectiveMetalTypes };
+
+  const effectiveAvailabilities = availabilities?.length
+    ? availabilities
+    : availability
+      ? [availability]
+      : undefined;
+  if (effectiveAvailabilities) filter.availability = { $in: effectiveAvailabilities };
+
   if (featuredOnly) filter.isFeatured = true;
   if (publishedOnly) filter.isPublished = true;
+
+  if (weightMin !== undefined || weightMax !== undefined) {
+    const range: Record<string, number> = {};
+    if (weightMin !== undefined) range.$gte = weightMin;
+    if (weightMax !== undefined) range.$lte = weightMax;
+    filter.netWeightGrams = range;
+  }
+
+  if (newArrivalOnly) {
+    const since = new Date();
+    since.setDate(since.getDate() - NEW_ARRIVAL_WINDOW_DAYS);
+    filter.createdAt = { $gte: since };
+  }
+
+  if (collectionId) {
+    const collection = await CollectionModel.findOne({
+      tenantId: DEFAULT_TENANT_ID,
+      _id: collectionId,
+    })
+      .select("productIds")
+      .lean();
+    // An empty/missing collection should yield zero results, not "ignore the filter".
+    filter._id = { $in: collection?.productIds ?? [] };
+  }
 
   const trimmedQuery = query?.trim();
   // MongoDB $text search against the compound text index (name/SKU/tags/
@@ -157,30 +408,71 @@ export async function listProducts({
     filter.$text = { $search: trimmedQuery };
   }
 
-  const total = await ProductModel.countDocuments(filter);
   const scoreProjection = trimmedQuery
     ? { score: { $meta: "textScore" } }
     : undefined;
 
-  // Price is computed, never stored (PRD §12), so a price sort can't be
-  // pushed down to MongoDB — fall back to fetching a bounded window,
-  // pricing it, sorting in memory, then paginating. Fine at boutique
-  // catalogue scale; revisit if the catalogue ever approaches MAX_SORT_SCAN.
-  if (sort === "price_asc" || sort === "price_desc") {
+  const hasPriceRange = priceMin !== undefined || priceMax !== undefined;
+
+  // Price and popularity/view/reservation-based sorts can't be pushed down
+  // to MongoDB (price is computed at render time, never stored; view/
+  // reservation counts live in separate collections) — fetch a bounded
+  // window, price + rank it, filter/sort in memory, then paginate. Fine at
+  // boutique catalogue scale; revisit if the catalogue ever approaches
+  // MAX_SORT_SCAN.
+  if (IN_MEMORY_SORTS.has(sort) || hasPriceRange) {
     const docs = await ProductModel.find(filter)
       .sort({ createdAt: -1 })
       .limit(MAX_SORT_SCAN)
       .lean();
 
-    const priced = await attachPrices(
+    let priced = await attachPrices(
       docs.map((doc) => toProduct(doc as unknown as ProductDoc)),
     );
-    priced.sort((a, b) =>
-      sort === "price_asc"
-        ? a.price.total - b.price.total
-        : b.price.total - a.price.total,
-    );
 
+    if (hasPriceRange) {
+      priced = priced.filter(
+        ({ price }) =>
+          (priceMin === undefined || price.total >= priceMin) &&
+          (priceMax === undefined || price.total <= priceMax),
+      );
+    }
+
+    if (sort === "price_asc" || sort === "price_desc") {
+      priced.sort((a, b) =>
+        sort === "price_asc"
+          ? a.price.total - b.price.total
+          : b.price.total - a.price.total,
+      );
+    } else if (
+      sort === "most_viewed" ||
+      sort === "most_reserved" ||
+      sort === "popularity"
+    ) {
+      const productIds = priced.map(({ product }) => product.id);
+      const slugs = priced.map(({ product }) => product.slug);
+      const [viewCounts, reservedCounts] = await Promise.all([
+        sort !== "most_reserved"
+          ? getViewCountsBySlug(slugs)
+          : Promise.resolve(new Map<string, number>()),
+        sort !== "most_viewed"
+          ? getReservedCountsByProductId(productIds)
+          : Promise.resolve(new Map<string, number>()),
+      ]);
+
+      const score = ({ product }: ProductWithPrice) => {
+        const views = viewCounts.get(product.slug) ?? 0;
+        const reservations = reservedCounts.get(product.id) ?? 0;
+        if (sort === "most_viewed") return views;
+        if (sort === "most_reserved") return reservations;
+        // Popularity: a reservation is a much stronger buying-intent signal
+        // than a page view, so it's weighted heavier in the composite score.
+        return views + reservations * 3;
+      };
+      priced.sort((a, b) => score(b) - score(a));
+    }
+
+    const total = priced.length;
     const start = (page - 1) * pageSize;
     return {
       items: priced.slice(start, start + pageSize),
@@ -191,14 +483,21 @@ export async function listProducts({
     };
   }
 
+  const total = await ProductModel.countDocuments(filter);
+
   // A search query defaults to relevance ranking (textScore) unless the
-  // caller explicitly asked for name order; otherwise fall back to newest.
+  // caller explicitly asked for a specific order; otherwise fall back to
+  // newest/weight as requested.
   const mongoSort: Record<string, 1 | -1 | { $meta: "textScore" }> =
     sort === "name_asc"
       ? { "name.en": 1 }
-      : trimmedQuery
-        ? { score: { $meta: "textScore" } }
-        : { createdAt: -1 };
+      : sort === "weight_asc"
+        ? { netWeightGrams: 1 }
+        : sort === "weight_desc"
+          ? { netWeightGrams: -1 }
+          : trimmedQuery
+            ? { score: { $meta: "textScore" } }
+            : { createdAt: -1 };
 
   const docs = await ProductModel.find(filter, scoreProjection)
     .sort(mongoSort)
@@ -279,7 +578,7 @@ export async function getProductBySlug(
 
   const product = toProduct(doc as unknown as ProductDoc);
   const rates = await getCurrentRates();
-  const rate = product.metalType === "gold" ? rates.gold : rates.silver;
+  const rate = rateForMetalType(product.metalType, rates);
 
   const price = calculatePrice({
     netWeightGrams: product.netWeightGrams,
@@ -288,6 +587,10 @@ export async function getProductBySlug(
     gstPercentage: product.gstPercentage,
     metalRatePerGram: rate?.ratePerGram ?? null,
     rateEffectiveDate: rate?.effectiveDate ?? null,
+    stoneValue: product.stoneValue,
+    certificationCost: product.certificationCost,
+    customCharges: product.customCharges,
+    override: product.priceOverride,
   });
 
   return { product, price };

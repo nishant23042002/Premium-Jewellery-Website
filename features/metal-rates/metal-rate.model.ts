@@ -10,15 +10,27 @@ import { tenantField } from "@/lib/db/schema-helpers";
 const metalRateSchema = new Schema(
   {
     tenantId: tenantField,
-    metalType: { type: String, enum: ["gold", "silver"], required: true },
+    metalType: {
+      type: String,
+      enum: ["gold", "silver", "platinum"],
+      required: true,
+    },
     purity: { type: String, required: true, trim: true },
     ratePerGram: { type: Number, required: true, min: 0 },
     effectiveDate: { type: Date, required: true, default: () => new Date() },
+    // Optional — an API-sourced rate (source: "api") has no staff actor;
+    // only present for source: "manual".
     setByAdminId: {
       type: Schema.Types.ObjectId,
       ref: "AdminUser",
-      required: true,
     },
+    source: {
+      type: String,
+      enum: ["manual", "api"],
+      required: true,
+      default: "manual",
+    },
+    providerName: { type: String, trim: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

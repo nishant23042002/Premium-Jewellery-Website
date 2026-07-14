@@ -121,6 +121,28 @@ export async function uploadMediaAsset(
   }
 }
 
+/** Sets an asset's tags — the field already exists on the model but nothing wrote to it until now. */
+export async function updateMediaAssetTags(
+  id: string,
+  tags: string[],
+): Promise<ActionResult<MediaAsset>> {
+  const session = await requirePermission("media.manage");
+  await connectToDatabase();
+
+  const doc = await MediaAssetModel.findOneAndUpdate(
+    { _id: id, tenantId: DEFAULT_TENANT_ID },
+    { $set: { tags } },
+    { new: true },
+  );
+  if (!doc) {
+    return { success: false, error: "Asset not found" };
+  }
+
+  logAudit(session, "updated", "media", id, doc.fileName ?? doc.publicId);
+  revalidatePath(ROUTES.admin.media);
+  return { success: true, data: toMediaAsset(doc.toObject()) };
+}
+
 export async function deleteMediaAsset(id: string): Promise<ActionResult> {
   const session = await requirePermission("media.manage");
   await connectToDatabase();

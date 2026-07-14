@@ -60,6 +60,8 @@ const paymentSchema = new Schema(
     amount: { type: Number, required: true },
     currency: { type: String, required: true, default: "INR" },
     verifiedAt: { type: Date },
+    refundId: { type: String },
+    refundedAt: { type: Date },
   },
   { _id: false },
 );

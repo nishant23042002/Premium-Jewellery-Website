@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -8,31 +7,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ProductSort } from "@/features/products/product.actions";
+import { useProductFilters } from "@/hooks/use-product-filters";
+import type { ProductSort as ProductSortValue } from "@/features/products/product.actions";
 
-const SORT_OPTIONS: { value: ProductSort; label: string }[] = [
+export const SORT_OPTIONS: { value: ProductSortValue; label: string }[] = [
   { value: "newest", label: "Newest Arrivals" },
+  { value: "popularity", label: "Popularity" },
+  { value: "name_asc", label: "Alphabetically: A to Z" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
-  { value: "name_asc", label: "Name: A to Z" },
+  { value: "weight_asc", label: "Weight: Low to High" },
+  { value: "weight_desc", label: "Weight: High to Low" },
+  { value: "most_viewed", label: "Most Viewed" },
+  { value: "most_reserved", label: "Most Reserved" },
 ];
 
-/** Sort control for the Products catalogue — updates the `sort` query param, page resets to 1. */
-export function ProductSort({ value }: { value: ProductSort }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  function handleChange(next: string | null) {
-    if (!next) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sort", next);
-    params.delete("page");
-    router.push(`${pathname}?${params.toString()}`);
-  }
+/** Sort control for the Products catalogue — reads/writes the `sort` query param via the shared filter hook, page resets to 1. */
+export function ProductSort() {
+  const { filters, setSort } = useProductFilters();
 
   return (
-    <Select value={value} onValueChange={handleChange}>
+    <Select
+      value={filters.sort}
+      onValueChange={(next) => next && setSort(next as ProductSortValue)}
+    >
       <SelectTrigger className="w-[190px]" size="sm">
         <SelectValue />
       </SelectTrigger>

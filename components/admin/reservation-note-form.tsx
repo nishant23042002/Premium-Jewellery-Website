@@ -42,6 +42,7 @@ export function ReservationNoteForm({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Add an internal note..."
+        aria-label="Internal note"
         rows={2}
         className="flex-1"
       />
@@ -49,6 +50,7 @@ export function ReservationNoteForm({
         type="submit"
         size="icon"
         variant="outline"
+        aria-label="Add note"
         disabled={isSubmitting || !note.trim()}
       >
         {isSubmitting ? (

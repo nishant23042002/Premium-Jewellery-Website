@@ -39,6 +39,7 @@ export function MediaPicker({
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [isUploading, startUpload] = useTransition();
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadAssets() {
@@ -56,11 +57,7 @@ export function MediaPicker({
     if (next && assets.length === 0) loadAssets();
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
+  function uploadFile(file: File) {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -77,6 +74,19 @@ export function MediaPicker({
     });
   }
 
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) uploadFile(file);
+  }
+
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDraggingOver(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) uploadFile(file);
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
@@ -90,10 +100,23 @@ export function MediaPicker({
           <DialogTitle>Media Library</DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center justify-between gap-3">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDraggingOver(true);
+          }}
+          onDragLeave={() => setIsDraggingOver(false)}
+          onDrop={handleDrop}
+          className={`flex items-center justify-between gap-3 rounded-lg border border-dashed p-3 transition-colors ${
+            isDraggingOver
+              ? "border-gold bg-gold/5"
+              : "border-border"
+          }`}
+        >
           <p className="text-xs text-muted-foreground">
-            Pick an existing image, or upload a new one (JPG, PNG, WebP — up to
-            10MB).
+            {isDraggingOver
+              ? "Drop to upload"
+              : "Drag an image here, pick an existing one below, or upload (JPG, PNG, WebP — up to 10MB)."}
           </p>
           <Button
             type="button"

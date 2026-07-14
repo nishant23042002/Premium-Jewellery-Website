@@ -101,7 +101,7 @@ export function SeoForm({ config }: { config: SeoConfig }) {
                 {ogImageUrl && (
                   <Image
                     src={ogImageUrl}
-                    alt=""
+                    alt="Current social share image"
                     width={80}
                     height={45}
                     className="h-11 w-20 rounded border border-border object-cover"

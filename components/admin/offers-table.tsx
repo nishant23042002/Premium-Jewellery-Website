@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
+import { ImageOff } from "lucide-react";
 import { DataTable } from "@/components/common/data-table";
 import { DataTableRowActions } from "@/components/admin/data-table-row-actions";
 import { PublishToggle } from "@/components/admin/publish-toggle";
@@ -10,6 +12,24 @@ import { ROUTES } from "@/constants/routes";
 import type { Offer } from "@/features/offers/offer.types";
 
 const columns: ColumnDef<Offer>[] = [
+  {
+    id: "image",
+    header: "",
+    cell: ({ row }) =>
+      row.original.imageUrl ? (
+        <Image
+          src={row.original.imageUrl}
+          alt=""
+          width={56}
+          height={56}
+          className="size-14 rounded-lg border border-border object-cover"
+        />
+      ) : (
+        <div className="flex size-14 items-center justify-center rounded-lg bg-muted">
+          <ImageOff className="size-4 text-muted-foreground/50" />
+        </div>
+      ),
+  },
   {
     accessorKey: "title",
     header: "Title",

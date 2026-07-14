@@ -69,7 +69,7 @@ export function AppearanceForm({ config }: { config: AppearanceConfig }) {
                 {logoUrl && (
                   <Image
                     src={logoUrl}
-                    alt=""
+                    alt="Current logo"
                     width={56}
                     height={56}
                     className="size-14 rounded-lg border border-border object-contain"
@@ -94,7 +94,7 @@ export function AppearanceForm({ config }: { config: AppearanceConfig }) {
                 {faviconUrl && (
                   <Image
                     src={faviconUrl}
-                    alt=""
+                    alt="Current favicon"
                     width={32}
                     height={32}
                     className="size-8 rounded border border-border object-contain"

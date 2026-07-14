@@ -89,7 +89,7 @@ export function HeroSlideForm({ slide }: { slide?: HeroSlide }) {
               <div className="relative aspect-4/5 w-full max-w-40 overflow-hidden rounded-lg border border-border bg-muted">
                 <Image
                   src={mobileImageUrl}
-                  alt=""
+                  alt="Current mobile banner"
                   fill
                   sizes="160px"
                   className="object-cover"
@@ -123,7 +123,7 @@ export function HeroSlideForm({ slide }: { slide?: HeroSlide }) {
               <div className="relative aspect-8/3 w-full overflow-hidden rounded-lg border border-border bg-muted">
                 <Image
                   src={desktopImageUrl}
-                  alt=""
+                  alt="Current desktop banner"
                   fill
                   sizes="320px"
                   className="object-cover"

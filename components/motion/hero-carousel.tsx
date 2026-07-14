@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import { useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import type { HeroSlide } from "@/features/hero-slides/hero-slide.types";
 
@@ -35,6 +36,7 @@ export function HeroCarousel({ slides, className }: HeroCarouselProps) {
     }),
   ]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
 
   const scrollTo = useCallback(
     (index: number) => emblaApi?.scrollTo(index),
@@ -52,6 +54,17 @@ export function HeroCarousel({ slides, className }: HeroCarouselProps) {
       emblaApi.off("reInit", onSelect);
     };
   }, [emblaApi]);
+
+  // WCAG 2.2.2 — continuously auto-advancing content must be stoppable;
+  // simplest compliant behavior here is to not auto-advance at all when the
+  // visitor has asked for reduced motion, leaving manual dot navigation.
+  useEffect(() => {
+    if (!emblaApi || !shouldReduceMotion) return;
+    const autoplay = emblaApi.plugins().autoplay as
+      | { stop: () => void }
+      | undefined;
+    autoplay?.stop();
+  }, [emblaApi, shouldReduceMotion]);
 
   if (slides.length === 0) return null;
 

@@ -1,5 +1,43 @@
-import type { MakingChargeType } from "@/features/products/product.types";
+import type {
+  MakingChargeType,
+  MetalType,
+} from "@/features/products/product.types";
 import type { PriceBreakdown } from "@/features/products/product.types";
+
+interface RateEntry {
+  ratePerGram: number;
+  effectiveDate: string;
+}
+
+interface RatesByMetal {
+  gold: RateEntry | null;
+  silver: RateEntry | null;
+  platinum: RateEntry | null;
+}
+
+/**
+ * Single source of truth for "which MetalRate applies to this product" —
+ * gold/silver/platinum map directly; diamond/other have no metal-weight
+ * rate concept of their own (a future carat-based pricing model would
+ * replace this, not extend it), so they fall back to the silver rate,
+ * preserving the exact behavior this app already had before platinum
+ * support existed.
+ */
+export function rateForMetalType(
+  metalType: MetalType,
+  rates: RatesByMetal,
+): RateEntry | null {
+  switch (metalType) {
+    case "gold":
+      return rates.gold;
+    case "silver":
+      return rates.silver;
+    case "platinum":
+      return rates.platinum;
+    default:
+      return rates.silver;
+  }
+}
 
 export interface CalculatePriceInput {
   netWeightGrams: number;
@@ -9,6 +47,12 @@ export interface CalculatePriceInput {
   /** Null when no rate has been entered yet for today (PRD §42). */
   metalRatePerGram: number | null;
   rateEffectiveDate: string | null;
+  /** Flat rupee add-ons — all default to 0, so every pre-existing caller (that only ever passed the fields above) keeps computing the exact same price it always has. */
+  stoneValue?: number;
+  certificationCost?: number;
+  customCharges?: number;
+  /** When `locked` with a `fixedPrice` set, the formula below is skipped entirely — see PriceOverride. */
+  override?: { locked: boolean; fixedPrice?: number };
 }
 
 /**
@@ -26,6 +70,10 @@ export function calculatePrice({
   gstPercentage,
   metalRatePerGram,
   rateEffectiveDate,
+  stoneValue = 0,
+  certificationCost = 0,
+  customCharges = 0,
+  override,
 }: CalculatePriceInput): PriceBreakdown {
   if (netWeightGrams < 0) {
     throw new Error("netWeightGrams cannot be negative");
@@ -37,17 +85,39 @@ export function calculatePrice({
     throw new Error("gstPercentage cannot be negative");
   }
 
+  if (override?.locked && override.fixedPrice !== undefined && override.fixedPrice >= 0) {
+    return {
+      metalRatePerGram: 0,
+      weightGrams: netWeightGrams,
+      metalValue: 0,
+      makingCharge: 0,
+      stoneValue: 0,
+      certificationCost: 0,
+      customCharges: 0,
+      subtotal: 0,
+      gstAmount: 0,
+      total: round2(override.fixedPrice),
+      rateEffectiveDate,
+      isRatePending: false,
+      isOverridden: true,
+    };
+  }
+
   if (metalRatePerGram === null) {
     return {
       metalRatePerGram: 0,
       weightGrams: netWeightGrams,
       metalValue: 0,
       makingCharge: 0,
+      stoneValue: 0,
+      certificationCost: 0,
+      customCharges: 0,
       subtotal: 0,
       gstAmount: 0,
       total: 0,
       rateEffectiveDate: null,
       isRatePending: true,
+      isOverridden: false,
     };
   }
 
@@ -58,7 +128,9 @@ export function calculatePrice({
       metalValue,
     }),
   );
-  const subtotal = round2(metalValue + makingCharge);
+  const subtotal = round2(
+    metalValue + makingCharge + stoneValue + certificationCost + customCharges,
+  );
   const gstAmount = round2(subtotal * (gstPercentage / 100));
   const total = round2(subtotal + gstAmount);
 
@@ -67,11 +139,15 @@ export function calculatePrice({
     weightGrams: netWeightGrams,
     metalValue,
     makingCharge,
+    stoneValue,
+    certificationCost,
+    customCharges,
     subtotal,
     gstAmount,
     total,
     rateEffectiveDate,
     isRatePending: false,
+    isOverridden: false,
   };
 }
 

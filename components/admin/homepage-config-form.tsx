@@ -186,7 +186,7 @@ export function HomepageConfigForm({ config }: { config: HomepageConfig }) {
                       {value ? (
                         <Image
                           src={value}
-                          alt=""
+                          alt={`Current ${label} image`}
                           fill
                           sizes="56px"
                           className="object-cover"

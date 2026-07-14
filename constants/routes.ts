@@ -36,8 +36,12 @@ export const ROUTES = {
   account: "/account",
   accountLogin: "/account/login",
   accountSignup: "/account/signup",
+  accountForgotPassword: "/account/forgot-password",
+  accountResetPassword: "/account/reset-password",
   accountOrders: "/account/orders",
   accountOrder: (id: string) => `/account/orders/${id}`,
+  accountReservations: "/account/reservations",
+  apiAuthGoogle: "/api/auth/google",
 
   cart: "/cart",
   checkout: "/checkout",

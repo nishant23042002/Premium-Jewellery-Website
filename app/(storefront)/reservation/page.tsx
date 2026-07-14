@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Reveal } from "@/components/motion/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
 import { ReservationForm } from "@/components/storefront/reservation-form";
+import { getCurrentCustomer } from "@/features/customer-auth/customer-auth.actions";
+import { safeQuery } from "@/lib/db/safe-query";
 import { SITE } from "@/constants/site";
 
 export const metadata: Metadata = {
@@ -42,6 +44,7 @@ export default async function ReservationPage({
   searchParams,
 }: ReservationPageProps) {
   const { product } = await searchParams;
+  const customer = await safeQuery(() => getCurrentCustomer(), null);
 
   return (
     <>
@@ -88,7 +91,18 @@ export default async function ReservationPage({
                 <h2 className="mb-4 font-heading text-xl">
                   Reserve Your Visit
                 </h2>
-                <ReservationForm prefillProductSlug={product} />
+                <ReservationForm
+                  prefillProductSlug={product}
+                  prefillCustomer={
+                    customer
+                      ? {
+                          name: customer.name,
+                          phone: customer.phone,
+                          email: customer.email,
+                        }
+                      : undefined
+                  }
+                />
               </CardContent>
             </Card>
           </Reveal>

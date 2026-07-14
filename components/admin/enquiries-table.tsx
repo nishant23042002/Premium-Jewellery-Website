@@ -1,15 +1,67 @@
 "use client";
 
+import Image from "next/image";
 import type { ColumnDef } from "@tanstack/react-table";
+import { ImageOff, Phone } from "lucide-react";
 import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EnquiryStatusSelect } from "@/components/admin/enquiry-status-select";
-import { formatDate } from "@/lib/utils/format";
+import { TimeCell } from "@/components/admin/time-cell";
 import type { Enquiry } from "@/features/enquiries/enquiry.types";
 
 const columns: ColumnDef<Enquiry>[] = [
+  {
+    id: "product",
+    header: "Product",
+    cell: ({ row }) =>
+      row.original.productName ? (
+        <div className="flex items-center gap-3">
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+            {row.original.productImageUrl && (
+              <Image
+                src={row.original.productImageUrl}
+                alt={row.original.productName}
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
+            )}
+          </div>
+          <span className="max-w-32 truncate text-sm">
+            {row.original.productName}
+          </span>
+        </div>
+      ) : (
+        <div className="flex size-14 items-center justify-center rounded-lg bg-muted">
+          <ImageOff className="size-4 text-muted-foreground/50" />
+        </div>
+      ),
+  },
   { accessorKey: "name", header: "Name" },
-  { accessorKey: "phone", header: "Phone" },
+  {
+    accessorKey: "phone",
+    header: "Phone",
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1.5">
+        <span>{row.original.phone}</span>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          nativeButton={false}
+          render={
+            <a
+              href={`tel:${row.original.phone}`}
+              aria-label={`Call ${row.original.name}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Phone />
+            </a>
+          }
+        />
+      </div>
+    ),
+  },
   {
     id: "message",
     header: "Message",
@@ -31,7 +83,7 @@ const columns: ColumnDef<Enquiry>[] = [
   {
     id: "createdAt",
     header: "Received",
-    cell: ({ row }) => formatDate(row.original.createdAt),
+    cell: ({ row }) => <TimeCell at={row.original.createdAt} />,
   },
   {
     id: "status",

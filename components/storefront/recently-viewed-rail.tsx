@@ -9,12 +9,16 @@ import {
   type ProductWithPrice,
 } from "@/features/products/product.actions";
 import { useRecentlyViewedStore } from "@/store/zustand/use-recently-viewed-store";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
 
 /** "Recently Viewed" rail (Phase 5) — reads the local viewing history, excluding whichever product is currently open. */
 export function RecentlyViewedRail({
   excludeProductId,
+  locale = "en",
 }: {
   excludeProductId?: string;
+  locale?: Locale;
 }) {
   const productIds = useRecentlyViewedStore((s) => s.productIds);
   const [items, setItems] = useState<ProductWithPrice[]>([]);
@@ -47,10 +51,17 @@ export function RecentlyViewedRail({
   return (
     <section className="section bg-secondary/20 pt-0">
       <Container>
-        <h2 className="mb-8 font-heading text-2xl">Recently Viewed</h2>
+        <h2 className="mb-8 font-heading text-2xl">
+          {t("recentlyViewed", locale)}
+        </h2>
         <Grid cols={{ base: 2, lg: 4 }} gap="lg">
           {items.map(({ product, price }) => (
-            <ProductCard key={product.id} product={product} price={price} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              price={price}
+              locale={locale}
+            />
           ))}
         </Grid>
       </Container>

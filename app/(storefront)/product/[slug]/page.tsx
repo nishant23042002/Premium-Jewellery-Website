@@ -28,10 +28,18 @@ import {
   getProductBySlug,
   listRelatedProducts,
 } from "@/features/products/product.actions";
+import { getCurrentCustomer } from "@/features/customer-auth/customer-auth.actions";
 import { safeQuery } from "@/lib/db/safe-query";
 import { formatWeight } from "@/lib/utils/format";
 import { canonicalFor } from "@/lib/seo/config";
 import { siteConfig } from "@/config/site.config";
+import {
+  buildWhatsAppLink,
+  productEnquiryWhatsAppMessage,
+} from "@/lib/notifications/whatsapp-templates";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { pickLocalized } from "@/lib/i18n/pick-localized";
+import { t } from "@/lib/i18n/dictionary";
 import { ROUTES, SITE } from "@/constants";
 
 interface ProductPageProps {
@@ -69,13 +77,28 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   const { product, price } = result;
 
-  const related = await safeQuery(
-    () => listRelatedProducts(product.categoryId, product.id),
-    [],
-  );
+  const [related, customer, locale] = await Promise.all([
+    safeQuery(() => listRelatedProducts(product.categoryId, product.id), []),
+    safeQuery(() => getCurrentCustomer(), null),
+    getStorefrontLocale(),
+  ]);
 
-  const whatsappMessage = encodeURIComponent(
-    `Hi, I'm interested in "${product.name.en}" (${product.skuCode}) from your website.`,
+  const displayName = pickLocalized(product.name, locale);
+  const displayDescription = pickLocalized(product.description, locale);
+
+  const whatsappLink = buildWhatsAppLink(
+    SITE.whatsappNumber,
+    productEnquiryWhatsAppMessage({
+      productName: displayName,
+      skuCode: product.skuCode,
+      metalType: product.metalType,
+      purity: product.purity,
+      netWeightGrams: product.netWeightGrams,
+      productUrl: `${siteConfig.url}${ROUTES.product(product.slug)}`,
+      productImageUrl: product.images[0]?.url,
+      customerName: customer?.name,
+      customerEmail: customer?.email,
+    }),
   );
 
   return (
@@ -157,7 +180,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                 </div>
 
                 <h1 className="mt-3 font-heading text-2xl sm:text-3xl">
-                  {product.name.en}
+                  {displayName}
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   SKU: {product.skuCode}
@@ -168,9 +191,9 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                 <PriceBreakdown price={price} />
               </div>
 
-              {product.description.en && (
+              {displayDescription && (
                 <p className="text-sm text-muted-foreground">
-                  {product.description.en}
+                  {displayDescription}
                 </p>
               )}
 
@@ -194,17 +217,19 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                     nativeButton={false}
                     render={
                       <a
-                        href={`https://wa.me/${SITE.whatsappNumber}?text=${whatsappMessage}`}
+                        href={whatsappLink}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        WhatsApp Enquiry
+                        {t("whatsappEnquiry", locale)}
                       </a>
                     }
                   />
                   <ProductEnquiryDialog
                     productId={product.id}
-                    productName={product.name.en}
+                    productName={displayName}
+                    productImageUrl={product.images[0]?.url}
+                    productSkuCode={product.skuCode}
                   />
                   <Button
                     variant="outline"
@@ -237,8 +262,8 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
         </Container>
       </section>
 
-      <RelatedProducts items={related} />
-      <RecentlyViewedRail excludeProductId={product.id} />
+      <RelatedProducts items={related} locale={locale} />
+      <RecentlyViewedRail excludeProductId={product.id} locale={locale} />
     </>
   );
 }

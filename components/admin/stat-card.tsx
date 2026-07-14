@@ -9,6 +9,8 @@ interface StatCardProps {
   icon: LucideIcon;
   href?: string;
   accent?: boolean;
+  /** Small trailing element next to the value — typically a <GrowthBadge>. */
+  badge?: React.ReactNode;
 }
 
 export function StatCard({
@@ -17,6 +19,7 @@ export function StatCard({
   icon: Icon,
   href,
   accent,
+  badge,
 }: StatCardProps) {
   const content = (
     <Card
@@ -37,7 +40,10 @@ export function StatCard({
           <Icon className="size-5" />
         </div>
         <div>
-          <p className="text-xl font-semibold">{value}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xl font-semibold">{value}</p>
+            {badge}
+          </div>
           <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       </CardContent>

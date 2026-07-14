@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     request.headers.get("x-real-ip") ??
     "anonymous";
 
-  const rateLimit = checkRateLimit(`rates-current:${identifier}`, {
+  const rateLimit = await checkRateLimit(`rates-current:${identifier}`, {
     limit: 30,
     windowMs: 60_000,
   });

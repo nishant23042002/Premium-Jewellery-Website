@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import { useReducedMotion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
@@ -32,6 +33,7 @@ export function TestimonialsCarousel({
   );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+  const shouldReduceMotion = useReducedMotion();
 
   const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
   const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
@@ -50,6 +52,16 @@ export function TestimonialsCarousel({
       emblaApi.off("reInit", onSelect);
     };
   }, [emblaApi]);
+
+  // WCAG 2.2.2 — don't auto-advance continuously-moving content when the
+  // visitor has asked for reduced motion; prev/next buttons still work.
+  useEffect(() => {
+    if (!emblaApi || !shouldReduceMotion) return;
+    const autoplay = emblaApi.plugins().autoplay as
+      | { stop: () => void }
+      | undefined;
+    autoplay?.stop();
+  }, [emblaApi, shouldReduceMotion]);
 
   return (
     <div className="relative">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CustomerLoginForm } from "@/components/storefront/customer-login-form";
 import { CustomerSignupForm } from "@/components/storefront/customer-signup-form";
@@ -28,6 +29,10 @@ export function HeaderAuthDialog({
   onOpenChange,
 }: HeaderAuthDialogProps) {
   const [tab, setTab] = useState<"login" | "signup">("login");
+  // Google sign-in leaves the SPA entirely (full browser redirect), so it
+  // can't rely on the dialog's onSuccess-closes-modal mechanism — instead it
+  // sends the customer back to whatever page the modal was opened from.
+  const pathname = usePathname();
 
   return (
     <Dialog
@@ -105,13 +110,17 @@ export function HeaderAuthDialog({
 
           {tab === "login" ? (
             <CustomerLoginForm
+              redirectTo={pathname}
               onSuccess={() => onOpenChange(false)}
               onSwitchToSignup={() => setTab("signup")}
+              surfaceClassName="bg-popover"
             />
           ) : (
             <CustomerSignupForm
+              redirectTo={pathname}
               onSuccess={() => onOpenChange(false)}
               onSwitchToLogin={() => setTab("login")}
+              surfaceClassName="bg-popover"
             />
           )}
         </div>

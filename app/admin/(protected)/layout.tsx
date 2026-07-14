@@ -3,6 +3,9 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { getSession } from "@/lib/auth/session";
 import { getSessionPermissions } from "@/lib/auth/permissions";
 import { logoutAction } from "@/features/auth/auth.actions";
+import { getAdminLocale } from "@/lib/i18n/locale";
+import { listAdminNotifications } from "@/features/audit-logs/audit-log.actions";
+import { safeQuery } from "@/lib/db/safe-query";
 import { ROUTES } from "@/constants/routes";
 
 /**
@@ -22,13 +25,19 @@ export default async function AdminLayout({
   const session = await getSession();
   if (!session) redirect(ROUTES.admin.login);
 
-  const permissions = await getSessionPermissions(session);
+  const [permissions, locale, notifications] = await Promise.all([
+    getSessionPermissions(session),
+    getAdminLocale(),
+    safeQuery(() => listAdminNotifications(), []),
+  ]);
 
   return (
     <AdminShell
       session={session}
       permissions={permissions}
       logoutAction={logoutAction}
+      locale={locale}
+      notifications={notifications}
     >
       {children}
     </AdminShell>

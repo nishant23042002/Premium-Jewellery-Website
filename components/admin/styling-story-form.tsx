@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { MediaPicker } from "@/components/admin/media-picker";
+import { VideoUploadField } from "@/components/admin/video-upload-field";
 import {
   createStylingStory,
   updateStylingStory,
@@ -40,6 +41,7 @@ export function StylingStoryForm({ story }: { story?: StylingStory }) {
       title: story?.title ?? { en: "", hi: "", mr: "" },
       subtitle: story?.subtitle ?? { en: "", hi: "", mr: "" },
       coverImageUrl: story?.coverImageUrl ?? "",
+      videoUrl: story?.videoUrl ?? "",
       sortOrder: story?.sortOrder ?? 0,
       isPublished: story?.isPublished ?? false,
     },
@@ -64,6 +66,7 @@ export function StylingStoryForm({ story }: { story?: StylingStory }) {
   }
 
   const coverImageUrl = form.watch("coverImageUrl");
+  const videoUrl = form.watch("videoUrl");
 
   return (
     <Form {...form}>
@@ -74,13 +77,14 @@ export function StylingStoryForm({ story }: { story?: StylingStory }) {
         <div className="space-y-1.5">
           <Label>Cover Image</Label>
           <p className="text-xs text-muted-foreground">
-            Shown on the story card in the homepage section.
+            Shown on the story card in the homepage section. Stays as the
+            fallback/poster image even if a video is added below.
           </p>
           <div className="flex items-center gap-3">
             {coverImageUrl && (
               <Image
                 src={coverImageUrl}
-                alt=""
+                alt="Current cover image"
                 width={80}
                 height={80}
                 className="size-20 rounded-lg border border-border object-cover"
@@ -97,6 +101,36 @@ export function StylingStoryForm({ story }: { story?: StylingStory }) {
           {form.formState.errors.coverImageUrl && (
             <p className="text-xs font-medium text-destructive">
               {form.formState.errors.coverImageUrl.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Cover Video (optional)</Label>
+          <p className="text-xs text-muted-foreground">
+            Upload the actual video file (MP4/WebM/MOV — e.g. exported from an
+            Instagram Reel, not a link to the Instagram post itself). When
+            set, this plays automatically on the card instead of the cover
+            image.
+          </p>
+          {videoUrl && (
+            <video
+              src={videoUrl}
+              className="aspect-video w-48 rounded-lg border border-border object-cover"
+              muted
+              playsInline
+              controls
+            />
+          )}
+          <VideoUploadField
+            value={videoUrl || undefined}
+            onChange={(url) =>
+              form.setValue("videoUrl", url, { shouldDirty: true })
+            }
+          />
+          {form.formState.errors.videoUrl && (
+            <p className="text-xs font-medium text-destructive">
+              {form.formState.errors.videoUrl.message}
             </p>
           )}
         </div>

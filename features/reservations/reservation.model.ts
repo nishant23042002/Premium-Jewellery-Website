@@ -29,6 +29,14 @@ const reservationActivitySchema = new Schema(
 const reservationSchema = new Schema(
   {
     tenantId: tenantField,
+    // Optional — only set when the customer was logged in at submission
+    // time. Guest reservations (name/phone/email only) are the common case
+    // and remain fully supported.
+    customerId: {
+      type: Schema.Types.ObjectId,
+      ref: "CustomerAccount",
+      default: null,
+    },
     name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
     email: { type: String, trim: true, lowercase: true },
@@ -49,6 +57,7 @@ const reservationSchema = new Schema(
 
 reservationSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
 reservationSchema.index({ tenantId: 1, preferredDate: 1 });
+reservationSchema.index({ tenantId: 1, customerId: 1, createdAt: -1 });
 
 export type ReservationDocument = InferSchemaType<typeof reservationSchema>;
 

@@ -21,6 +21,21 @@ function baseLayout(bodyHtml: string): string {
 </html>`;
 }
 
+export function passwordResetEmail(
+  name: string,
+  resetUrl: string,
+): EmailContent {
+  const subject = `Reset your password — ${SITE.name}`;
+  const html = baseLayout(`
+    <h1 style="font-size: 20px;">Reset your password</h1>
+    <p>Hi ${name}, we received a request to reset your account password. This link expires in 1 hour and can only be used once.</p>
+    <p style="margin-top: 20px;"><a href="${resetUrl}" style="display:inline-block; background:#9A7C46; color:#fff; padding:10px 20px; border-radius:8px; text-decoration:none; font-family:Arial,sans-serif; font-size:14px;">Reset Password</a></p>
+    <p style="margin-top: 16px; font-size: 12px; color: #6b6259;">If you didn't request this, you can safely ignore this email — your password won't change unless you click the link above and set a new one.</p>
+  `);
+  const text = `Hi ${name}, reset your ${SITE.name} password here (expires in 1 hour): ${resetUrl}\n\nIf you didn't request this, ignore this email.`;
+  return { subject, html, text };
+}
+
 function productLines(reservation: Reservation): string {
   if (reservation.products.length === 0) return "";
   return `<p>Pieces: ${reservation.products.map((p) => p.name).join(", ")}</p>`;
@@ -67,8 +82,37 @@ export function reservationCancelledCustomerEmail(
   return { subject, html, text };
 }
 
+export function reservationCompletedCustomerEmail(
+  reservation: Reservation,
+): EmailContent {
+  const subject = `Thank you for visiting — ${SITE.name}`;
+  const html = baseLayout(`
+    <h1 style="font-size: 20px;">Thank you, ${reservation.name}</h1>
+    <p>We hope you enjoyed your visit to ${SITE.name} on ${formatDate(reservation.preferredDate)}.</p>
+    <p>We'd love to welcome you again soon — call us at ${SITE.phoneDisplay} anytime.</p>
+  `);
+  const text = `Thank you for visiting ${SITE.name} on ${formatDate(reservation.preferredDate)}. We hope to see you again soon.`;
+  return { subject, html, text };
+}
+
+function actionButton(label: string, url: string, color: string): string {
+  return `<a href="${url}" style="display:inline-block; background:${color}; color:#fff; padding:10px 20px; border-radius:8px; text-decoration:none; font-family:Arial,sans-serif; font-size:14px; margin:4px 8px 4px 0;">${label}</a>`;
+}
+
+export interface ReservationAdminActionLinks {
+  confirmUrl: string;
+  cancelUrl: string;
+}
+
+/**
+ * `actionLinks` is optional so this template still works anywhere an admin
+ * email is sent without a signed-token context available — but the
+ * reservation notification pipeline always supplies it, since that's the
+ * whole point (confirm/cancel straight from the inbox, no dashboard login).
+ */
 export function newReservationAdminEmail(
   reservation: Reservation,
+  actionLinks?: ReservationAdminActionLinks,
 ): EmailContent {
   const subject = `New reservation request from ${reservation.name}`;
   const html = baseLayout(`
@@ -77,6 +121,15 @@ export function newReservationAdminEmail(
     <p>${formatDate(reservation.preferredDate)} (${reservation.preferredTimeSlot})</p>
     ${productLines(reservation)}
     ${reservation.message ? `<p>Message: ${reservation.message}</p>` : ""}
+    ${
+      actionLinks
+        ? `<div style="margin-top: 20px;">
+            ${actionButton("Confirm", actionLinks.confirmUrl, "#9A7C46")}
+            ${actionButton("Cancel", actionLinks.cancelUrl, "#B3423E")}
+          </div>
+          <p style="font-size: 12px; color: #6b6259; margin-top: 12px;">Or open the full reservation in the admin dashboard to add a note or mark it completed after the visit.</p>`
+        : ""
+    }
   `);
   const text = `New reservation from ${reservation.name} (${reservation.phone}) for ${formatDate(reservation.preferredDate)}.`;
   return { subject, html, text };

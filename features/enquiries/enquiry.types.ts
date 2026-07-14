@@ -11,4 +11,7 @@ export interface Enquiry {
   source: EnquirySource;
   status: EnquiryStatus;
   createdAt: string;
+  /** Best-effort, looked up live from the current product record — undefined if there's no linked product or it was since deleted. */
+  productName?: string;
+  productImageUrl?: string;
 }

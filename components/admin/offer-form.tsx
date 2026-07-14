@@ -187,7 +187,7 @@ export function OfferForm({ offer }: { offer?: Offer }) {
             {imageUrl && (
               <Image
                 src={imageUrl}
-                alt=""
+                alt="Current offer image"
                 width={56}
                 height={56}
                 className="size-14 rounded-lg border border-border object-cover"

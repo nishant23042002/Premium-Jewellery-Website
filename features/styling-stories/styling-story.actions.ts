@@ -25,6 +25,7 @@ interface StylingStoryDoc {
   title: StylingStory["title"];
   subtitle?: StylingStory["subtitle"] | null;
   coverImageUrl?: string | null;
+  videoUrl?: string | null;
   sortOrder: number;
   isPublished: boolean;
   createdAt: Date;
@@ -42,6 +43,7 @@ function toStylingStory(doc: StylingStoryDoc): StylingStory {
     // listings render instead of throwing; `listStylingStoriesResolved`
     // filters these out of the storefront.
     coverImageUrl: doc.coverImageUrl ?? "",
+    videoUrl: doc.videoUrl ?? undefined,
     sortOrder: doc.sortOrder,
     isPublished: doc.isPublished,
     createdAt: doc.createdAt.toISOString(),
@@ -83,6 +85,7 @@ export async function listStylingStoriesResolved(
       ? story.subtitle[locale] || story.subtitle.en || undefined
       : undefined,
     coverImageUrl: story.coverImageUrl,
+    videoUrl: story.videoUrl,
   }));
 }
 
