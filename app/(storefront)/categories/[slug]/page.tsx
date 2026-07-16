@@ -18,7 +18,11 @@ import { pickLocalized } from "@/lib/i18n/pick-localized";
 import type { LocalizedText } from "@/types/common";
 
 /** Singular "Category" label — the shared dictionary only has the plural "categories". */
-const CATEGORY_SINGULAR: LocalizedText = { en: "Category", hi: "श्रेणी", mr: "श्रेणी" };
+const CATEGORY_SINGULAR: LocalizedText = {
+  en: "Category",
+  hi: "श्रेणी",
+  mr: "श्रेणी",
+};
 
 const EMPTY_STATE: LocalizedText = {
   en: "No pieces in this category are published online yet — visit the showroom to see what's in stock today.",
@@ -89,7 +93,6 @@ export default async function CategoryDetailPage({
           { label: pickLocalized(category.name, locale) },
         ]}
         locale={locale}
-        ]}
       />
 
       <section className="section pt-0">
@@ -107,7 +110,9 @@ export default async function CategoryDetailPage({
             </Grid>
           ) : (
             <div className="rounded-2xl border border-dashed border-border py-16 text-center">
-              <p className="text-sm text-muted-foreground">{EMPTY_STATE[locale]}</p>
+              <p className="text-sm text-muted-foreground">
+                {EMPTY_STATE[locale]}
+              </p>
             </div>
           )}
         </Container>

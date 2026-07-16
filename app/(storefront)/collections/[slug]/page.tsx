@@ -23,7 +23,11 @@ import { pickLocalized } from "@/lib/i18n/pick-localized";
 import type { LocalizedText } from "@/types/common";
 
 /** Singular "Collection" label — the shared dictionary only has the plural "collections". */
-const COLLECTION_SINGULAR: LocalizedText = { en: "Collection", hi: "कलेक्शन", mr: "कलेक्शन" };
+const COLLECTION_SINGULAR: LocalizedText = {
+  en: "Collection",
+  hi: "कलेक्शन",
+  mr: "कलेक्शन",
+};
 
 interface CollectionPageProps {
   params: Promise<{ slug: string }>;
@@ -80,7 +84,6 @@ export default async function CollectionDetailPage({
           { label: pickLocalized(collection.name, locale) },
         ]}
         locale={locale}
-        ]}
       />
 
       <section className="section pt-0">
