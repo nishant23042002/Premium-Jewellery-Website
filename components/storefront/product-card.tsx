@@ -19,6 +19,7 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { formatINR } from "@/lib/utils/format";
 import { pickLocalized } from "@/lib/i18n/pick-localized";
+import { t } from "@/lib/i18n/dictionary";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useWishlistStore } from "@/store/zustand/use-wishlist-store";
@@ -81,13 +82,13 @@ export function ProductCard({
   // Trending + New + Featured reads as noise. Priority favors the stronger
   // buying-intent signal first.
   const promoBadge = isBestSeller
-    ? "Best Seller"
+    ? t("bestSeller", locale)
     : isTrending
-      ? "Trending"
+      ? t("trending", locale)
       : isNewArrival(product)
-        ? "New Arrival"
+        ? t("newArrival", locale)
         : product.isFeatured
-          ? "Featured"
+          ? t("featured", locale)
           : null;
 
   return (
@@ -130,20 +131,23 @@ export function ProductCard({
             </>
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-              No image yet
+              {t("noImageYet", locale)}
             </div>
           )}
 
           <div className="absolute bottom-0 flex w-full flex-col">
             {promoBadge && <Badge variant="gold">{promoBadge}</Badge>}
             {product.availability !== "in_showroom" && (
-              <AvailabilityBadge availability={product.availability} />
+              <AvailabilityBadge
+                availability={product.availability}
+                locale={locale}
+              />
             )}
             {/* Never mix stock-style urgency messaging with a made-to-order piece — it isn't "in stock" at all, it's crafted after ordering. */}
             {!isMadeToOrder(product) &&
               product.quantity > 0 &&
               product.quantity <= LOW_STOCK_THRESHOLD && (
-                <LowStockBadge quantity={product.quantity} />
+                <LowStockBadge quantity={product.quantity} locale={locale} />
               )}
           </div>
 
@@ -196,13 +200,16 @@ export function ProductCard({
             {product.purity} {product.metalType}
           </p>
           <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">
-            {price.isRatePending ? "Price on request" : formatINR(price.total)}
+            {price.isRatePending
+              ? t("priceOnRequest", locale)
+              : formatINR(price.total)}
           </p>
           {isMadeToOrder(product) && (
             <ProductionEstimate
               productionTimeDays={product.productionTimeDays}
               deliveryEstimateDays={product.deliveryEstimateDays}
               compact
+              locale={locale}
             />
           )}
         </div>

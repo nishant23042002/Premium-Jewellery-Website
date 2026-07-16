@@ -92,6 +92,11 @@ export async function uploadVideoBuffer(
       {
         folder: options.folder,
         resource_type: "video",
+        // The SDK's own default is 60s, which a 50MB video routinely blows
+        // past on real-world upload bandwidth (a 50MB file needs ~6.7Mbps
+        // sustained just to squeak under 60s) — this was silently failing
+        // uploads that were still transferring fine, just slowly.
+        timeout: 180_000,
       },
       (error, result) => {
         if (error || !result) {

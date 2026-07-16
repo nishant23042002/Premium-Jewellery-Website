@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -51,6 +52,7 @@ export function CategoryForm({ category, categories }: CategoryFormProps) {
     defaultValues: {
       slug: category?.slug ?? "",
       name: category?.name ?? { en: "", hi: "", mr: "" },
+      description: category?.description ?? { en: "", hi: "", mr: "" },
       imageUrl: category?.imageUrl ?? "",
       sortOrder: category?.sortOrder ?? 0,
       parentId: category?.parentId ?? null,
@@ -139,6 +141,20 @@ export function CategoryForm({ category, categories }: CategoryFormProps) {
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="description.en"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (English)</FormLabel>
+              <FormControl>
+                <Textarea rows={3} placeholder="A short description shown as this category's page summary and used for its search-engine listing." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="space-y-1.5">
           <Label>Image</Label>

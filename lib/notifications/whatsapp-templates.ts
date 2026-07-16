@@ -1,4 +1,6 @@
 import { SITE } from "@/constants/site";
+import { ROUTES } from "@/constants/routes";
+import { clientEnv } from "@/config/env";
 import { formatDate, formatWeight } from "@/lib/utils/format";
 import type {
   Reservation,
@@ -16,9 +18,23 @@ export function buildWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+/**
+ * Used by both reservationReceivedCustomerMessage and
+ * reservationConfirmedCustomerMessage, so a photo link per piece shows up
+ * in the request-acknowledgement message and the visit-confirmed message
+ * alike. `wa.me` links can only pre-fill text (see productEnquiryWhatsAppMessage
+ * above) — the "Photo:" line is a direct image link WhatsApp renders as a
+ * preview thumbnail in the recipient's chat, not a real attachment.
+ */
 function productList(reservation: Reservation): string {
   if (reservation.products.length === 0) return "";
-  return `\nPieces: ${reservation.products.map((p) => p.name).join(", ")}`;
+  const lines = reservation.products.map((p) => {
+    const productUrl = `${clientEnv.NEXT_PUBLIC_SITE_URL}${ROUTES.product(p.slug)}`;
+    return p.imageUrl
+      ? `• ${p.name}\n  Photo: ${p.imageUrl}\n  ${productUrl}`
+      : `• ${p.name}\n  ${productUrl}`;
+  });
+  return `\n\nPieces:\n${lines.join("\n\n")}`;
 }
 
 export function reservationReceivedCustomerMessage(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, Loader2, Search, TrendingUp, X } from "lucide-react";
@@ -20,20 +20,34 @@ import { useRecentlyViewedStore } from "@/store/zustand/use-recently-viewed-stor
 import { useRecentSearchesStore } from "@/store/zustand/use-recent-searches-store";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatINR } from "@/lib/utils/format";
+import { t } from "@/lib/i18n/dictionary";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
+import type { Locale } from "@/types/common";
 
 const RESULT_LIMIT = 6;
 const SUGGESTION_LIMIT = 4;
+const MIN_TRACKED_QUERY_LENGTH = 2;
+// Deliberately much slower than the 250ms results debounce below — that one
+// exists to keep the dropdown feeling live as you type. This one decides
+// what counts as a "real" search worth remembering. At 250ms, nearly every
+// keystroke of an average typing pace settles and gets tracked, which is why
+// "recent searches" and the admin's search-analytics tables used to fill up
+// with every partial fragment ("w", "wa", "wat", "watc", ...). Waiting for a
+// longer pause means only searches the visitor actually paused/finished on
+// get recorded.
+const TRACK_DEBOUNCE_MS = 650;
 
 function ProductRow({
   product,
   price,
   onNavigate,
+  locale,
 }: {
   product: ProductWithPrice["product"];
   price: ProductWithPrice["price"];
   onNavigate: () => void;
+  locale: Locale;
 }) {
   return (
     <Link
@@ -55,7 +69,9 @@ function ProductRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{product.name.en}</p>
         <p className="text-xs text-muted-foreground">
-          {price.isRatePending ? "Price on request" : formatINR(price.total)}
+          {price.isRatePending
+            ? t("priceOnRequest", locale)
+            : formatINR(price.total)}
         </p>
       </div>
     </Link>
@@ -67,10 +83,12 @@ function NoResultsSuggestions({
   query,
   popularSearches,
   onSelect,
+  locale,
 }: {
   query: string;
   popularSearches: PopularSearch[];
   onSelect: (query: string) => void;
+  locale: Locale;
 }) {
   const suggestions = popularSearches.filter(
     (p) => p.query.toLowerCase() !== query.toLowerCase(),
@@ -79,12 +97,12 @@ function NoResultsSuggestions({
   return (
     <div className="py-6 text-center">
       <p className="text-sm text-muted-foreground">
-        No results for &ldquo;{query}&rdquo;.
+        {t("noResultsFor", locale)} &ldquo;{query}&rdquo;.
       </p>
       {suggestions.length > 0 && (
         <div className="mt-3">
           <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Try one of these instead
+            {t("tryOneOfTheseInstead", locale)}
           </p>
           <div className="flex flex-wrap justify-center gap-1.5">
             {suggestions.map((suggestion) => (
@@ -115,6 +133,7 @@ interface HeaderSearchProps {
    */
   variant?: "icon" | "bar";
   className?: string;
+  locale?: Locale;
 }
 
 /**
@@ -126,6 +145,7 @@ interface HeaderSearchProps {
 export function HeaderSearch({
   variant = "icon",
   className,
+  locale = "en",
 }: HeaderSearchProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -138,10 +158,21 @@ export function HeaderSearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
+  const trackDebouncedQuery = useDebounce(query, TRACK_DEBOUNCE_MS);
+  // Last query this component actually logged, so a longer pause on the
+  // same finished word (or an Enter press right before the debounce fires)
+  // never double-records it. Reset whenever the field is cleared, so
+  // re-searching the same term later in a fresh typing burst still counts.
+  const lastTrackedRef = useRef("");
+  // Most recent {query, total} the live results fetch resolved — read by
+  // the tracking effect so a genuinely zero-result search can still be
+  // tallied as such without re-fetching just to log it.
+  const lastFetchRef = useRef<{ query: string; total: number } | null>(null);
   const recentlyViewedIds = useRecentlyViewedStore((s) => s.productIds);
   const recentSearches = useRecentSearchesStore((s) => s.queries);
   const trackRecentSearch = useRecentSearchesStore((s) => s.track);
   const removeRecentSearch = useRecentSearchesStore((s) => s.remove);
+  const clearRecentSearches = useRecentSearchesStore((s) => s.clear);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -197,26 +228,47 @@ export function HeaderSearch({
     };
   }, [open]);
 
+  // Records a query as a "real" search — into the local recent-searches
+  // store and the server-side popular/zero-result search analytics. Called
+  // from the slow-settle debounce below and immediately on Enter, never
+  // from the fast results debounce (that one just drives the live dropdown).
+  const commitSearch = useCallback(
+    (raw: string) => {
+      const trimmed = raw.trim();
+      if (trimmed.length < MIN_TRACKED_QUERY_LENGTH) return;
+      if (lastTrackedRef.current.toLowerCase() === trimmed.toLowerCase()) {
+        return;
+      }
+      lastTrackedRef.current = trimmed;
+      trackRecentSearch(trimmed);
+      const matched = lastFetchRef.current;
+      logSearchQuery(
+        trimmed,
+        matched?.query.toLowerCase() === trimmed.toLowerCase()
+          ? matched.total
+          : undefined,
+      );
+    },
+    [trackRecentSearch],
+  );
+
   useEffect(() => {
     const trimmed = debouncedQuery.trim();
     if (!trimmed) {
       setResults([]);
       setTotal(0);
       setIsLoading(false);
+      lastTrackedRef.current = "";
       return;
     }
     let cancelled = false;
     setIsLoading(true);
-    // Fire-and-forget — a settled 250ms debounce is a reasonable proxy for
-    // "the user meant this term" now that there's no dedicated search-page
-    // submit to hang this on.
-    logSearchQuery(trimmed);
-    trackRecentSearch(trimmed);
     listProducts({ query: trimmed, pageSize: RESULT_LIMIT })
       .then((result) => {
         if (cancelled) return;
         setResults(result.items);
         setTotal(result.total);
+        lastFetchRef.current = { query: trimmed, total: result.total };
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -224,7 +276,13 @@ export function HeaderSearch({
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, trackRecentSearch]);
+  }, [debouncedQuery]);
+
+  // Only fires once the visitor has paused on a query for TRACK_DEBOUNCE_MS —
+  // the actual "commit" point for recent-searches/analytics tracking.
+  useEffect(() => {
+    commitSearch(trackDebouncedQuery);
+  }, [trackDebouncedQuery, commitSearch]);
 
   function close() {
     setOpen(false);
@@ -244,11 +302,10 @@ export function HeaderSearch({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={variant === "bar" ? () => setOpen(true) : undefined}
-        placeholder={
-          variant === "bar"
-            ? "Search for jewellery..."
-            : "Search by name, tag, or SKU..."
-        }
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commitSearch(query);
+        }}
+        placeholder={t("searchByNameTagSku", locale)}
         className={cn(
           "pr-8",
           variant === "bar" && "rounded-full border-transparent bg-muted pl-9",
@@ -257,7 +314,7 @@ export function HeaderSearch({
       {query && (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={t("clearSearch", locale)}
           onClick={() => setQuery("")}
           className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
         >
@@ -315,10 +372,19 @@ export function HeaderSearch({
                     <div className="space-y-5">
                       {recentSearches.length > 0 && (
                         <div>
-                          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            <Clock className="size-3" />
-                            Recent Searches
-                          </p>
+                          <div className="mb-1.5 flex items-center justify-between gap-1.5">
+                            <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                              <Clock className="size-3" />
+                              {t("recentSearches", locale)}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={clearRecentSearches}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              {t("clear", locale)}
+                            </button>
+                          </div>
                           <ul className="space-y-1">
                             {recentSearches.map((recent) => (
                               <li key={recent} className="group flex items-center">
@@ -347,7 +413,7 @@ export function HeaderSearch({
                         <div>
                           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             <Clock className="size-3" />
-                            Continue Browsing
+                            {t("continueBrowsing", locale)}
                           </p>
                           <ul className="space-y-1">
                             {recentlyViewed.map(({ product, price }) => (
@@ -356,6 +422,7 @@ export function HeaderSearch({
                                   product={product}
                                   price={price}
                                   onNavigate={close}
+                                  locale={locale}
                                 />
                               </li>
                             ))}
@@ -366,7 +433,7 @@ export function HeaderSearch({
                       {popularSearches.length > 0 && (
                         <div>
                           <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Popular Searches
+                            {t("popularSearches", locale)}
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {popularSearches.map((popular) => (
@@ -388,7 +455,7 @@ export function HeaderSearch({
                     {trending.length > 0 && (
                       <div className="border-t border-border pt-5 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
                         <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                          Trending Products
+                          {t("trendingProducts", locale)}
                         </p>
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                           {trending.map(({ product, price }) => (
@@ -417,7 +484,7 @@ export function HeaderSearch({
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {price.isRatePending
-                                  ? "Price on request"
+                                  ? t("priceOnRequest", locale)
                                   : formatINR(price.total)}
                               </p>
                             </Link>
@@ -428,8 +495,7 @@ export function HeaderSearch({
                   </div>
                 ) : (
                   <p className="py-8 text-center text-sm text-muted-foreground">
-                    Try searching for a category like &ldquo;bridal&rdquo; or a
-                    metal type like &ldquo;gold&rdquo;.
+                    {t("searchTryCategoryHint", locale)}
                   </p>
                 )
               ) : results.length === 0 ? (
@@ -437,6 +503,7 @@ export function HeaderSearch({
                   query={trimmedQuery}
                   popularSearches={popularSearches}
                   onSelect={setQuery}
+                  locale={locale}
                 />
               ) : (
                 <ul className="grid gap-1 sm:grid-cols-2">
@@ -446,6 +513,7 @@ export function HeaderSearch({
                         product={product}
                         price={price}
                         onNavigate={close}
+                        locale={locale}
                       />
                     </li>
                   ))}
@@ -455,8 +523,8 @@ export function HeaderSearch({
 
             {trimmedQuery && total > results.length && (
               <p className="border-t border-border px-4 py-2.5 text-center text-xs text-muted-foreground">
-                Showing {results.length} of {total} — refine your search to
-                narrow it down.
+                Showing {results.length} of {total} —{" "}
+                {t("showingXOfYRefine", locale)}
               </p>
             )}
           </div>
@@ -474,10 +542,19 @@ export function HeaderSearch({
               <div className="space-y-4">
                 {recentSearches.length > 0 && (
                   <div>
-                    <p className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      <Clock className="size-3" />
-                      Recent Searches
-                    </p>
+                    <div className="mb-1 flex items-center justify-between gap-1.5 px-1">
+                      <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                        <Clock className="size-3" />
+                        {t("recentSearches", locale)}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={clearRecentSearches}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {t("clear", locale)}
+                      </button>
+                    </div>
                     <ul className="space-y-1">
                       {recentSearches.map((recent) => (
                         <li key={recent} className="group flex items-center">
@@ -506,7 +583,7 @@ export function HeaderSearch({
                   <div>
                     <p className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                       <Clock className="size-3" />
-                      Continue Browsing
+                      {t("continueBrowsing", locale)}
                     </p>
                     <ul className="space-y-1">
                       {recentlyViewed.map(({ product, price }) => (
@@ -515,6 +592,7 @@ export function HeaderSearch({
                             product={product}
                             price={price}
                             onNavigate={close}
+                            locale={locale}
                           />
                         </li>
                       ))}
@@ -525,7 +603,7 @@ export function HeaderSearch({
                 {popularSearches.length > 0 && (
                   <div>
                     <p className="mb-2 px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Popular Searches
+                      {t("popularSearches", locale)}
                     </p>
                     <div className="flex flex-wrap gap-2 px-1">
                       {popularSearches.map((popular) => (
@@ -546,7 +624,7 @@ export function HeaderSearch({
                 {trending.length > 0 && (
                   <div>
                     <p className="mb-2 px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Trending Products
+                      {t("trendingProducts", locale)}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {trending.map(({ product, price }) => (
@@ -575,7 +653,7 @@ export function HeaderSearch({
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {price.isRatePending
-                              ? "Price on request"
+                              ? t("priceOnRequest", locale)
                               : formatINR(price.total)}
                           </p>
                         </Link>
@@ -589,8 +667,7 @@ export function HeaderSearch({
                   popularSearches.length === 0 &&
                   trending.length === 0 && (
                     <p className="px-1 py-4 text-sm text-muted-foreground">
-                      Try searching for a category like &ldquo;bridal&rdquo; or
-                      a metal type like &ldquo;gold&rdquo;.
+                      {t("searchTryCategoryHint", locale)}
                     </p>
                   )}
               </div>
@@ -599,6 +676,7 @@ export function HeaderSearch({
                 query={trimmedQuery}
                 popularSearches={popularSearches}
                 onSelect={setQuery}
+                locale={locale}
               />
             ) : (
               <ul className="space-y-1">
@@ -608,6 +686,7 @@ export function HeaderSearch({
                       product={product}
                       price={price}
                       onNavigate={close}
+                      locale={locale}
                     />
                   </li>
                 ))}
@@ -617,8 +696,8 @@ export function HeaderSearch({
 
           {trimmedQuery && total > results.length && (
             <p className="mt-2 py-2 text-center text-xs text-muted-foreground">
-              Showing {results.length} of {total} — refine your search to narrow
-              it down.
+              Showing {results.length} of {total} —{" "}
+              {t("showingXOfYRefine", locale)}
             </p>
           )}
         </div>

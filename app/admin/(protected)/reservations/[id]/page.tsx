@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Mail, MessageCircle, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -103,17 +104,40 @@ export default async function AdminReservationDetailPage({
       {reservation.products.length > 0 && (
         <Card className="mt-4 border-border/60">
           <CardContent className="pt-2">
-            <p className="mb-2 text-xs text-muted-foreground">
+            <p className="mb-3 text-xs text-muted-foreground">
               Pieces Requested
             </p>
-            <ul className="space-y-1">
+            <ul
+              className={
+                reservation.products.length > 1
+                  ? "grid gap-3 sm:grid-cols-2"
+                  : "space-y-1"
+              }
+            >
               {reservation.products.map((p) => (
                 <li key={p.productId}>
                   <Link
                     href={ROUTES.product(p.slug)}
-                    className="text-sm text-gold-dark hover:underline"
+                    className="flex items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-muted"
                   >
-                    {p.name}
+                    <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                      {p.imageUrl ? (
+                        <Image
+                          src={p.imageUrl}
+                          alt={p.name}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
+                          No photo
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-gold-dark hover:underline">
+                      {p.name}
+                    </span>
                   </Link>
                 </li>
               ))}

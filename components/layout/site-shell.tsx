@@ -11,6 +11,7 @@ import { getWishlistProductIds } from "@/features/wishlist/wishlist.actions";
 import { getActiveReservationStatusForCustomer } from "@/features/reservations/reservation.actions";
 import { safeQuery } from "@/lib/db/safe-query";
 import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/dictionary";
 import { Navbar } from "@/components/layout/navbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Footer } from "@/components/layout/footer";
@@ -69,7 +70,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
         href="#main-content"
         className="focus-luxury sr-only rounded-lg bg-background px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100"
       >
-        Skip to content
+        {t("skipToContent", locale)}
       </a>
       <PageViewTracker />
       <WishlistHydrator productIds={wishlistProductIds} />

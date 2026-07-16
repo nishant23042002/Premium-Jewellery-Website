@@ -3,10 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { clientEnv } from "@/config/env";
 import { ROUTES } from "@/constants/routes";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
 
 interface GoogleSignInButtonProps {
   redirectTo?: string;
   label?: string;
+  locale?: Locale;
 }
 
 function GoogleGlyph() {
@@ -41,7 +44,8 @@ function GoogleGlyph() {
  */
 export function GoogleSignInButton({
   redirectTo,
-  label = "Continue with Google",
+  label,
+  locale = "en",
 }: GoogleSignInButtonProps) {
   if (!clientEnv.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return null;
 
@@ -57,7 +61,7 @@ export function GoogleSignInButton({
       render={<a href={href} />}
     >
       <GoogleGlyph />
-      {label}
+      {label ?? t("continueWithGoogle", locale)}
     </Button>
   );
 }
@@ -71,8 +75,10 @@ export function GoogleSignInButton({
  */
 export function AuthDivider({
   surfaceClassName = "bg-card",
+  locale = "en",
 }: {
   surfaceClassName?: string;
+  locale?: Locale;
 }) {
   return (
     <div className="relative">
@@ -81,7 +87,7 @@ export function AuthDivider({
       </div>
       <div className="relative flex justify-center text-xs uppercase">
         <span className={`${surfaceClassName} px-2 text-muted-foreground`}>
-          Or continue with email
+          {t("orContinueWithEmail", locale)}
         </span>
       </div>
     </div>

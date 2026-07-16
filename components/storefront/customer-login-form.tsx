@@ -27,6 +27,18 @@ import {
 } from "@/features/customer-auth/customer-account.schema";
 import { toast } from "@/lib/toast";
 import { ROUTES } from "@/constants/routes";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
+
+const LOCAL_TEXT = {
+  couldntSignYouIn: {
+    en: "Couldn't sign you in",
+    hi: "आपको साइन इन नहीं किया जा सका",
+    mr: "तुम्हाला साइन इन करता आले नाही",
+  },
+  emailLabel: { en: "Email", hi: "ईमेल", mr: "ईमेल" },
+  newHereQuestion: { en: "New here?", hi: "नए हैं?", mr: "नवीन आहात?" },
+} as const;
 
 interface CustomerLoginFormProps {
   redirectTo?: string;
@@ -38,6 +50,7 @@ interface CustomerLoginFormProps {
   surfaceClassName?: string;
   /** Pre-filled error to toast on mount — used for the ?error= redirect back from a failed Google sign-in. */
   initialError?: string;
+  locale?: Locale;
 }
 
 export function CustomerLoginForm({
@@ -46,6 +59,7 @@ export function CustomerLoginForm({
   onSwitchToSignup,
   surfaceClassName,
   initialError,
+  locale = "en",
 }: CustomerLoginFormProps) {
   const router = useRouter();
 
@@ -56,7 +70,7 @@ export function CustomerLoginForm({
 
   useEffect(() => {
     if (initialError) {
-      toast.error("Couldn't sign you in", initialError);
+      toast.error(LOCAL_TEXT.couldntSignYouIn[locale], initialError);
     }
     // Only meant to fire once, for the error the page loaded with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,7 +79,7 @@ export function CustomerLoginForm({
   async function onSubmit(values: CustomerLoginFormValues) {
     const result = await customerLoginAction(values);
     if (!result.success) {
-      toast.error("Couldn't sign you in", result.error);
+      toast.error(LOCAL_TEXT.couldntSignYouIn[locale], result.error);
       return;
     }
     router.refresh();
@@ -79,14 +93,14 @@ export function CustomerLoginForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <GoogleSignInButton redirectTo={redirectTo} />
-        <AuthDivider surfaceClassName={surfaceClassName} />
+        <GoogleSignInButton redirectTo={redirectTo} locale={locale} />
+        <AuthDivider surfaceClassName={surfaceClassName} locale={locale} />
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{LOCAL_TEXT.emailLabel[locale]}</FormLabel>
               <FormControl>
                 <Input type="email" placeholder="you@example.com" {...field} />
               </FormControl>
@@ -100,12 +114,12 @@ export function CustomerLoginForm({
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between">
-                <FormLabel>Password</FormLabel>
+                <FormLabel>{t("password", locale)}</FormLabel>
                 <Link
                   href={ROUTES.accountForgotPassword}
                   className="text-xs text-gold-dark hover:underline"
                 >
-                  Forgot password?
+                  {t("forgotPassword", locale)}
                 </Link>
               </div>
               <FormControl>
@@ -124,24 +138,24 @@ export function CustomerLoginForm({
           {form.formState.isSubmitting && (
             <Loader2 className="size-4 animate-spin" />
           )}
-          Sign In
+          {t("signIn", locale)}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
-          New here?{" "}
+          {LOCAL_TEXT.newHereQuestion[locale]}{" "}
           {onSwitchToSignup ? (
             <button
               type="button"
               onClick={onSwitchToSignup}
               className="text-gold-dark hover:underline"
             >
-              Create an account
+              {t("createAccount", locale)}
             </button>
           ) : (
             <Link
               href={ROUTES.accountSignup}
               className="text-gold-dark hover:underline"
             >
-              Create an account
+              {t("createAccount", locale)}
             </Link>
           )}
         </p>

@@ -8,6 +8,8 @@ import {
 } from "@/components/motion/hero-reveal";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
 
 interface Breadcrumb {
   label: string;
@@ -21,6 +23,7 @@ interface PageHeroProps {
   breadcrumbs?: Breadcrumb[];
   className?: string;
   children?: React.ReactNode;
+  locale?: Locale;
 }
 
 /**
@@ -28,6 +31,13 @@ interface PageHeroProps {
  * breadcrumb trail. Shared by every page under Phase 4 so the "premium
  * storytelling" opening beat is consistent site-wide rather than
  * reinvented per page.
+ *
+ * Takes `locale` as a plain prop (defaulting to "en") rather than
+ * self-fetching via `getStorefrontLocale()` — this component is imported
+ * by a couple of Client Components (e.g. wishlist/compare pages), and a
+ * server-only cookie read anywhere in its module graph breaks the client
+ * bundle even if the code path is never actually reached at runtime.
+ * Callers that already have `locale` in scope should pass it through.
  */
 export function PageHero({
   eyebrow,
@@ -36,6 +46,7 @@ export function PageHero({
   breadcrumbs,
   className,
   children,
+  locale = "en",
 }: PageHeroProps) {
   return (
     <section className={cn("section border-b border-border", className)}>
@@ -45,7 +56,7 @@ export function PageHero({
           className="mb-6 flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
         >
           <Link href={ROUTES.home} className="hover:text-foreground">
-            Home
+            {t("home", locale)}
           </Link>
           {breadcrumbs?.map((crumb) => (
             <span key={crumb.label} className="flex items-center gap-1">

@@ -10,7 +10,21 @@ import { listProducts } from "@/features/products/product.actions";
 import { safeQuery } from "@/lib/db/safe-query";
 import { canonicalFor } from "@/lib/seo/config";
 import { siteConfig } from "@/config/site.config";
+import { SITE } from "@/constants/site";
 import { ROUTES } from "@/constants/routes";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/dictionary";
+import { pickLocalized } from "@/lib/i18n/pick-localized";
+import type { LocalizedText } from "@/types/common";
+
+/** Singular "Category" label — the shared dictionary only has the plural "categories". */
+const CATEGORY_SINGULAR: LocalizedText = { en: "Category", hi: "श्रेणी", mr: "श्रेणी" };
+
+const EMPTY_STATE: LocalizedText = {
+  en: "No pieces in this category are published online yet — visit the showroom to see what's in stock today.",
+  hi: "इस श्रेणी में अभी तक कोई आभूषण ऑनलाइन प्रकाशित नहीं हुआ है — आज उपलब्ध स्टॉक देखने के लिए शोरूम पर आएं।",
+  mr: "या श्रेणीतील कोणताही दागिना अद्याप ऑनलाइन प्रकाशित झालेला नाही — आज उपलब्ध साठा पाहण्यासाठी शोरूमला भेट द्या.",
+};
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -22,9 +36,21 @@ export async function generateMetadata({
   const { slug } = await params;
   const category = await safeQuery(() => getCategoryBySlug(slug), null);
   if (!category) return { title: "Category" };
+  const description =
+    category.description?.en ||
+    `Shop the ${category.name.en} collection at ${SITE.name} — live, transparent pricing on every piece, handcrafted in ${SITE.address.city}.`;
   return {
     title: category.name.en,
-    description: `Shop the ${category.name.en} collection — live, transparent pricing on every piece.`,
+    description,
+    keywords: [
+      category.name.en,
+      `${category.name.en} jewellery`,
+      `${category.name.en} jewellery ${SITE.address.city}`,
+      "gold jewellery",
+      "jewellery showroom",
+      SITE.address.city,
+    ],
+    openGraph: { title: category.name.en, description },
     ...canonicalFor(ROUTES.category(category.slug)),
   };
 }
@@ -33,7 +59,10 @@ export default async function CategoryDetailPage({
   params,
 }: CategoryPageProps) {
   const { slug } = await params;
-  const category = await safeQuery(() => getCategoryBySlug(slug), null);
+  const [category, locale] = await Promise.all([
+    safeQuery(() => getCategoryBySlug(slug), null),
+    getStorefrontLocale(),
+  ]);
 
   if (!category) notFound();
 
@@ -52,11 +81,14 @@ export default async function CategoryDetailPage({
         ]}
       />
       <PageHero
-        eyebrow="Category"
-        title={category.name.en}
+        eyebrow={CATEGORY_SINGULAR[locale]}
+        title={pickLocalized(category.name, locale)}
+        description={pickLocalized(category.description, locale) || undefined}
         breadcrumbs={[
-          { label: "Categories", href: ROUTES.categories },
-          { label: category.name.en },
+          { label: t("categories", locale), href: ROUTES.categories },
+          { label: pickLocalized(category.name, locale) },
+        ]}
+        locale={locale}
         ]}
       />
 
@@ -65,15 +97,17 @@ export default async function CategoryDetailPage({
           {products.items.length > 0 ? (
             <Grid cols={{ base: 2, sm: 3, lg: 4 }} gap="lg">
               {products.items.map(({ product, price }) => (
-                <ProductCard key={product.id} product={product} price={price} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  price={price}
+                  locale={locale}
+                />
               ))}
             </Grid>
           ) : (
             <div className="rounded-2xl border border-dashed border-border py-16 text-center">
-              <p className="text-sm text-muted-foreground">
-                No pieces in this category are published online yet — visit the
-                showroom to see what&apos;s in stock today.
-              </p>
+              <p className="text-sm text-muted-foreground">{EMPTY_STATE[locale]}</p>
             </div>
           )}
         </Container>

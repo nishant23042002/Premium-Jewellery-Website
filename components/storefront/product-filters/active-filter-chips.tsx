@@ -4,22 +4,26 @@ import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useProductFilters } from "@/hooks/use-product-filters";
 import { formatINR } from "@/lib/utils/format";
+import { t } from "@/lib/i18n/dictionary";
 import type { Category } from "@/features/categories/category.types";
 import type { Collection } from "@/features/collections/collection.types";
+import type { Locale, LocalizedText } from "@/types/common";
 
-const METAL_LABELS: Record<string, string> = {
-  gold: "Gold",
-  silver: "Silver",
-  platinum: "Platinum",
-  diamond: "Diamond",
-  other: "Other",
+const METAL_LABELS: Record<string, LocalizedText> = {
+  gold: { en: "Gold", hi: "सोना", mr: "सोने" },
+  silver: { en: "Silver", hi: "चांदी", mr: "चांदी" },
+  platinum: { en: "Platinum", hi: "प्लैटिनम", mr: "प्लॅटिनम" },
+  diamond: { en: "Diamond", hi: "हीरा", mr: "हिरा" },
+  other: { en: "Other", hi: "अन्य", mr: "इतर" },
 };
 
-const AVAILABILITY_LABELS: Record<string, string> = {
-  in_showroom: "In Showroom",
-  made_to_order: "Made to Order",
-  reserved: "Reserved",
+const AVAILABILITY_LABELS: Record<string, LocalizedText> = {
+  in_showroom: { en: "In Showroom", hi: "शोरूम में", mr: "शोरूममध्ये" },
+  made_to_order: { en: "Made to Order", hi: "ऑर्डर पर निर्मित", mr: "ऑर्डरनुसार बनवलेले" },
+  reserved: { en: "Reserved", hi: "आरक्षित", mr: "राखीव" },
 };
+
+const NO_MAX: LocalizedText = { en: "No max", hi: "कोई अधिकतम नहीं", mr: "कमाल मर्यादा नाही" };
 
 interface Chip {
   key: string;
@@ -31,9 +35,11 @@ interface Chip {
 export function ActiveFilterChips({
   categories,
   collections,
+  locale = "en",
 }: {
   categories: Category[];
   collections: Collection[];
+  locale?: Locale;
 }) {
   const { filters, toggleCategory, clearFilter } = useProductFilters();
 
@@ -60,7 +66,7 @@ export function ActiveFilterChips({
   for (const metal of filters.metalTypes) {
     chips.push({
       key: `metal-${metal}`,
-      label: METAL_LABELS[metal] ?? metal,
+      label: METAL_LABELS[metal]?.[locale] ?? metal,
       onRemove: () => clearFilter("metal"),
     });
   }
@@ -68,7 +74,7 @@ export function ActiveFilterChips({
   for (const availability of filters.availabilities) {
     chips.push({
       key: `availability-${availability}`,
-      label: AVAILABILITY_LABELS[availability] ?? availability,
+      label: AVAILABILITY_LABELS[availability]?.[locale] ?? availability,
       onRemove: () => clearFilter("availability"),
     });
   }
@@ -77,7 +83,7 @@ export function ActiveFilterChips({
     chips.push({
       key: "price",
       label: `${filters.priceMin !== undefined ? formatINR(filters.priceMin) : "₹0"} – ${
-        filters.priceMax !== undefined ? formatINR(filters.priceMax) : "No max"
+        filters.priceMax !== undefined ? formatINR(filters.priceMax) : NO_MAX[locale]
       }`,
       onRemove: () => clearFilter("price"),
     });
@@ -94,7 +100,7 @@ export function ActiveFilterChips({
   if (filters.newArrivalOnly) {
     chips.push({
       key: "new",
-      label: "New Arrivals",
+      label: t("newArrivals", locale),
       onRemove: () => clearFilter("new"),
     });
   }

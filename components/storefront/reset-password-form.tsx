@@ -22,8 +22,32 @@ import {
 } from "@/features/customer-auth/customer-account.schema";
 import { toast } from "@/lib/toast";
 import { ROUTES } from "@/constants/routes";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
 
-export function ResetPasswordForm({ token }: { token: string }) {
+const LOCAL_TEXT = {
+  couldntResetPassword: {
+    en: "Couldn't reset your password",
+    hi: "आपका पासवर्ड रीसेट नहीं किया जा सका",
+    mr: "तुमचा पासवर्ड रीसेट करता आला नाही",
+  },
+  passwordReset: { en: "Password reset", hi: "पासवर्ड रीसेट हुआ", mr: "पासवर्ड रीसेट झाला" },
+  signInWithNewPassword: {
+    en: "Sign in with your new password to continue.",
+    hi: "जारी रखने के लिए अपने नए पासवर्ड से साइन इन करें।",
+    mr: "पुढे जाण्यासाठी तुमच्या नवीन पासवर्डने साइन इन करा.",
+  },
+  newPassword: { en: "New password", hi: "नया पासवर्ड", mr: "नवीन पासवर्ड" },
+  confirmNewPassword: { en: "Confirm new password", hi: "नए पासवर्ड की पुष्टि करें", mr: "नवीन पासवर्डची पुष्टी करा" },
+} as const;
+
+export function ResetPasswordForm({
+  token,
+  locale = "en",
+}: {
+  token: string;
+  locale?: Locale;
+}) {
   const router = useRouter();
 
   const form = useForm<ResetPasswordInput>({
@@ -34,12 +58,12 @@ export function ResetPasswordForm({ token }: { token: string }) {
   async function onSubmit(values: ResetPasswordInput) {
     const result = await resetPasswordAction(values);
     if (!result.success) {
-      toast.error("Couldn't reset your password", result.error);
+      toast.error(LOCAL_TEXT.couldntResetPassword[locale], result.error);
       return;
     }
     toast.success(
-      "Password reset",
-      "Sign in with your new password to continue.",
+      LOCAL_TEXT.passwordReset[locale],
+      LOCAL_TEXT.signInWithNewPassword[locale],
     );
     router.push(ROUTES.accountLogin);
   }
@@ -52,7 +76,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>New password</FormLabel>
+              <FormLabel>{LOCAL_TEXT.newPassword[locale]}</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -65,7 +89,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm new password</FormLabel>
+              <FormLabel>{LOCAL_TEXT.confirmNewPassword[locale]}</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -82,11 +106,11 @@ export function ResetPasswordForm({ token }: { token: string }) {
           {form.formState.isSubmitting && (
             <Loader2 className="size-4 animate-spin" />
           )}
-          Reset Password
+          {t("resetPassword", locale)}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           <Link href={ROUTES.accountLogin} className="text-gold-dark hover:underline">
-            Back to Sign In
+            {t("backToSignIn", locale)}
           </Link>
         </p>
       </form>

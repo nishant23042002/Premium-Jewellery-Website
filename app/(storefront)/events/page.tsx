@@ -7,11 +7,15 @@ import { EventCard } from "@/components/marketing/event-card";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { listEvents } from "@/features/events/event.actions";
 import { safeQuery } from "@/lib/db/safe-query";
+import { canonicalFor } from "@/lib/seo/config";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Events",
   description:
     "Showroom events, seasonal previews, and exchange camps at Shree Ambika Jewellers.",
+  keywords: ["jewellery showroom events", "gold exchange camp", "jewellery preview event"],
+  ...canonicalFor(ROUTES.events),
 };
 
 export default async function EventsPage() {

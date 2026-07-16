@@ -85,6 +85,13 @@ export function ProductForm({ product, categories, currentRates }: ProductFormPr
       isFeatured: product?.isFeatured ?? false,
       isPublished: product?.isPublished ?? false,
       tags: product?.tags ?? [],
+      barcode: product?.barcode ?? "",
+      metaTitle: product?.metaTitle ?? "",
+      metaDescription: product?.metaDescription ?? "",
+      canonicalUrl: product?.canonicalUrl ?? "",
+      ogTitle: product?.ogTitle ?? "",
+      ogDescription: product?.ogDescription ?? "",
+      ogImageUrl: product?.ogImageUrl ?? "",
     },
   });
 
@@ -280,6 +287,19 @@ export function ProductForm({ product, categories, currentRates }: ProductFormPr
                   <FormLabel>SKU code</FormLabel>
                   <FormControl>
                     <Input placeholder="AJ-NK-0142" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="barcode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Barcode (optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="8901234567890" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -926,6 +946,97 @@ export function ProductForm({ product, categories, currentRates }: ProductFormPr
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>SEO (optional)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Leave blank to fall back to the product name and description.
+            </p>
+            <FormField
+              control={form.control}
+              name="metaTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Meta title</FormLabel>
+                  <FormControl>
+                    <Input placeholder={product?.name.en} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="metaDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Meta description</FormLabel>
+                  <FormControl>
+                    <Textarea rows={2} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="canonicalUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Canonical URL</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="ogTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Social share title</FormLabel>
+                    <FormControl>
+                      <Input placeholder={product?.name.en} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="ogImageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Social share image URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="ogDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Social share description</FormLabel>
+                  <FormControl>
+                    <Textarea rows={2} {...field} />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />

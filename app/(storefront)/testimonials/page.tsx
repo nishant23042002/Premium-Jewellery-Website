@@ -5,19 +5,33 @@ import { Grid } from "@/components/common/grid";
 import { Reveal } from "@/components/motion/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
+import { GoogleReviewCard } from "@/components/marketing/google-review-card";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { listTestimonials } from "@/features/testimonials/testimonial.actions";
+import { getGoogleReviews } from "@/features/reviews/google-review.actions";
 import { safeQuery } from "@/lib/db/safe-query";
+import { canonicalFor } from "@/lib/seo/config";
 import { SITE } from "@/constants/site";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Testimonials",
   description:
     "What our customers say about their experience with Shree Ambika Jewellers.",
+  keywords: ["jewellery store reviews", `${SITE.address.city} jewellers reviews`, "customer testimonials"],
+  ...canonicalFor(ROUTES.testimonials),
 };
 
 export default async function TestimonialsPage() {
-  const testimonials = await safeQuery(() => listTestimonials(), []);
+  // Real Google Reviews take priority when configured (live fetch, or the
+  // last successfully cached batch if the Places API is down) — the
+  // manually-curated Testimonial records are the fallback for when neither
+  // exists yet, so the page is never empty.
+  const [googleReviews, testimonials] = await Promise.all([
+    safeQuery(() => getGoogleReviews(6), []),
+    safeQuery(() => listTestimonials(), []),
+  ]);
+  const hasGoogleReviews = googleReviews.length > 0;
 
   return (
     <>
@@ -39,7 +53,15 @@ export default async function TestimonialsPage() {
 
       <section className="section pt-0">
         <Container>
-          {testimonials.length > 0 ? (
+          {hasGoogleReviews ? (
+            <Grid cols={{ base: 1, sm: 2, lg: 3 }} gap="lg">
+              {googleReviews.map((review, i) => (
+                <Reveal key={`${review.authorName}-${review.time}`} index={i}>
+                  <GoogleReviewCard review={review} />
+                </Reveal>
+              ))}
+            </Grid>
+          ) : testimonials.length > 0 ? (
             <Grid cols={{ base: 1, sm: 2, lg: 3 }} gap="lg">
               {testimonials.map((testimonial, i) => (
                 <Reveal key={testimonial.id} index={i}>

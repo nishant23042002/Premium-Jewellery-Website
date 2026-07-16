@@ -12,9 +12,16 @@ import { CollectionModel } from "@/features/collections/collection.model";
 import { OfferModel } from "@/features/offers/offer.model";
 import { MetalRateModel } from "@/features/metal-rates/metal-rate.model";
 import { getCurrentRates } from "@/features/metal-rates/metal-rate.actions";
-import { getPopularSearches } from "@/features/search-analytics/search-query.actions";
+import {
+  getPopularSearches,
+  getZeroResultSearches,
+} from "@/features/search-analytics/search-query.actions";
+import { PageViewModel } from "@/features/visitor-analytics/page-view.model";
 import { LOW_STOCK_THRESHOLD } from "@/features/products/product.types";
+import { ROUTES } from "@/constants/routes";
 import type { TrendChartDatum } from "@/components/common/trend-chart";
+import type { RankedImageDatum } from "@/components/common/ranked-image-list";
+import type { PopularSearch } from "@/features/search-analytics/search-query.actions";
 
 async function countsByDay(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,7 +63,7 @@ export interface AnalyticsSummary {
   reservationsByDay: TrendChartDatum[];
   enquiriesByDay: TrendChartDatum[];
   reservationsByStatus: TrendChartDatum[];
-  productsByCategory: TrendChartDatum[];
+  productsByCategory: RankedImageDatum[];
   rateHistory: TrendChartDatum[];
 }
 
@@ -89,9 +96,7 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       .lean(),
   ]);
 
-  const categoryNameById = new Map(
-    categories.map((c) => [String(c._id), c.name.en]),
-  );
+  const categoryById = new Map(categories.map((c) => [String(c._id), c]));
 
   return {
     reservationsByDay,
@@ -102,12 +107,18 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
         value: g.count,
       }),
     ),
-    productsByCategory: categoryGroups.map(
-      (g: { _id: unknown; count: number }) => ({
-        label: categoryNameById.get(String(g._id)) ?? "Uncategorized",
-        value: g.count,
-      }),
-    ),
+    productsByCategory: categoryGroups
+      .map((g: { _id: unknown; count: number }) => {
+        const category = categoryById.get(String(g._id));
+        return {
+          id: category ? String(category._id) : undefined,
+          label: category?.name.en ?? "Uncategorized",
+          value: g.count,
+          imageUrl: category?.imageUrl ?? undefined,
+          href: category ? ROUTES.admin.category(String(category._id)) : undefined,
+        };
+      })
+      .sort((a, b) => b.value - a.value),
     rateHistory: [...goldRates].reverse().map((r) => ({
       label: r.effectiveDate.toLocaleDateString("en-IN", {
         day: "2-digit",
@@ -431,12 +442,12 @@ export async function getSalesIntelligence(): Promise<SalesIntelligence> {
 }
 
 export interface ReservationInsights {
-  mostReservedProducts: TrendChartDatum[];
-  mostReservedCategories: TrendChartDatum[];
-  topCollections: TrendChartDatum[];
+  mostReservedProducts: RankedImageDatum[];
+  mostReservedCategories: RankedImageDatum[];
+  topCollections: RankedImageDatum[];
 }
 
-/** Ranks products/categories/collections by how often they appear across all reservations — the reservation model already snapshots product name/slug per line item. */
+/** Ranks products/categories/collections by how often they appear across all reservations — the reservation model already snapshots product name/slug per line item. Ids/images are resolved alongside (both were already being looked up here to compute the rollups; they just weren't kept on the returned shape before). */
 export async function getReservationInsights(): Promise<ReservationInsights> {
   await requirePermission("analytics.view");
   await connectToDatabase();
@@ -457,11 +468,6 @@ export async function getReservationInsights(): Promise<ReservationInsights> {
     }
   }
 
-  const mostReservedProducts = Array.from(productCounts.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
-    .map((v) => ({ label: v.name, value: v.count }));
-
   const reservedProductIds = Array.from(productCounts.keys());
   const [productsForCategory, categories, collections] = await Promise.all([
     reservedProductIds.length > 0
@@ -469,47 +475,69 @@ export async function getReservationInsights(): Promise<ReservationInsights> {
           _id: { $in: reservedProductIds },
           tenantId: DEFAULT_TENANT_ID,
         })
-          .select("categoryId")
+          .select("categoryId slug images")
           .lean()
       : Promise.resolve([]),
-    CategoryModel.find({ tenantId: DEFAULT_TENANT_ID }).select("name").lean(),
+    CategoryModel.find({ tenantId: DEFAULT_TENANT_ID })
+      .select("name imageUrl")
+      .lean(),
     CollectionModel.find({
       tenantId: DEFAULT_TENANT_ID,
       ...NOT_DELETED_FILTER,
       isPublished: true,
     })
-      .select("name productIds")
+      .select("name imageUrl productIds")
       .lean(),
   ]);
 
-  const categoryNameById = new Map(
-    categories.map((c) => [String(c._id), c.name.en]),
-  );
-  const categoryIdByProductId = new Map(
-    productsForCategory.map((p) => [String(p._id), String(p.categoryId)]),
-  );
+  const productById = new Map(productsForCategory.map((p) => [String(p._id), p]));
+  const categoryById = new Map(categories.map((c) => [String(c._id), c]));
+
+  const mostReservedProducts = Array.from(productCounts.entries())
+    .map(([id, { name, count }]) => {
+      const product = productById.get(id);
+      return {
+        id,
+        label: name,
+        value: count,
+        imageUrl: product?.images?.[0]?.url,
+        href: product ? ROUTES.admin.product(id) : undefined,
+      };
+    })
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   const categoryCounts = new Map<string, number>();
   for (const [productId, { count }] of productCounts) {
-    const categoryId = categoryIdByProductId.get(productId);
+    const categoryId = productById.get(productId)?.categoryId;
     if (!categoryId) continue;
-    categoryCounts.set(categoryId, (categoryCounts.get(categoryId) ?? 0) + count);
+    const key = String(categoryId);
+    categoryCounts.set(key, (categoryCounts.get(key) ?? 0) + count);
   }
   const mostReservedCategories = Array.from(categoryCounts.entries())
-    .map(([id, count]) => ({
-      label: categoryNameById.get(id) ?? "Uncategorized",
-      value: count,
-    }))
+    .map(([id, count]) => {
+      const category = categoryById.get(id);
+      return {
+        id,
+        label: category?.name.en ?? "Uncategorized",
+        value: count,
+        imageUrl: category?.imageUrl ?? undefined,
+        href: category ? ROUTES.admin.category(id) : undefined,
+      };
+    })
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
   const topCollections = collections
     .map((c) => ({
+      id: String(c._id),
       label: c.name.en,
       value: c.productIds.reduce(
         (sum, pid) => sum + (productCounts.get(String(pid))?.count ?? 0),
         0,
       ),
+      imageUrl: c.imageUrl ?? undefined,
+      href: ROUTES.admin.collection(String(c._id)),
     }))
     .filter((c) => c.value > 0)
     .sort((a, b) => b.value - a.value)
@@ -518,9 +546,75 @@ export async function getReservationInsights(): Promise<ReservationInsights> {
   return { mostReservedProducts, mostReservedCategories, topCollections };
 }
 
+/**
+ * Most-viewed products over the last 30 days, by storefront page views —
+ * the same PageView data that already powers the "Trending" badge, just
+ * surfaced with real counts and photos instead of feeding a cached id list.
+ * A separate, un-cached read (unlike product.actions.ts's getTrendingProductIds)
+ * since the analytics dashboard is an admin reading it a few times a day,
+ * not a hot storefront render path.
+ */
+export async function getMostViewedProducts(limit = 5): Promise<RankedImageDatum[]> {
+  await requirePermission("analytics.view");
+  await connectToDatabase();
+
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+
+  const groups: { _id: string; count: number }[] = await PageViewModel.aggregate([
+    {
+      $match: {
+        tenantId: DEFAULT_TENANT_ID,
+        path: { $regex: "^/product/" },
+        createdAt: { $gte: since },
+      },
+    },
+    { $group: { _id: "$path", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: limit * 2 }, // headroom before filtering to still-existing/published products
+  ]);
+  if (groups.length === 0) return [];
+
+  const slugToCount = new Map(
+    groups.map((g) => [g._id.replace("/product/", ""), g.count]),
+  );
+  const products = await ProductModel.find({
+    tenantId: DEFAULT_TENANT_ID,
+    ...NOT_DELETED_FILTER,
+    isPublished: true,
+    slug: { $in: Array.from(slugToCount.keys()) },
+  })
+    .select("name slug images")
+    .lean();
+
+  return products
+    .map((p) => ({
+      id: String(p._id),
+      label: p.name.en,
+      value: slugToCount.get(p.slug) ?? 0,
+      imageUrl: p.images?.[0]?.url,
+      href: ROUTES.admin.product(String(p._id)),
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
+}
+
 /** Reuses the existing search-query counter — just reshaped for a ranked-list card. */
 export async function getSearchInsights(): Promise<TrendChartDatum[]> {
   await requirePermission("analytics.view");
   const popular = await getPopularSearches(6);
   return popular.map((p) => ({ label: p.query, value: p.count }));
+}
+
+/**
+ * Search terms that consistently return nothing — a direct signal for what
+ * to stock or add to the catalogue next ("customers keep searching X, we
+ * don't carry X"), which none of the other rollups here can answer since
+ * they're all built from what customers already found, not what they
+ * couldn't.
+ */
+export async function getZeroResultSearchInsights(): Promise<TrendChartDatum[]> {
+  await requirePermission("analytics.view");
+  const zeroResult: PopularSearch[] = await getZeroResultSearches(6);
+  return zeroResult.map((p) => ({ label: p.query, value: p.count }));
 }

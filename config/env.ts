@@ -68,6 +68,25 @@ const serverEnvSchema = z.object({
   // every deployment needing a Google Cloud OAuth client before it can boot.
   GOOGLE_CLIENT_ID: optionalSecret(),
   GOOGLE_CLIENT_SECRET: optionalSecret(),
+
+  // Optional — when unset, /admin is reachable directly at its normal path
+  // (today's behavior, unchanged). When set, /admin/* (including the login
+  // page itself) 404s for anyone without a signed "gate" cookie first
+  // obtained by visiting /api/admin-gate?key=<this value> — see
+  // middleware.ts. A defense-in-depth layer against automated scanners
+  // probing well-known admin paths, layered on top of (never a replacement
+  // for) the real session/password auth underneath.
+  ADMIN_GATE_SECRET: optionalSecret(),
+
+  // Optional — the Testimonials page's live "Google Reviews" block (see
+  // features/reviews/google-review.actions.ts) degrades to the last
+  // successfully cached batch (or the manually-curated Testimonial records)
+  // when either is unset, rather than every deployment needing a Places API
+  // key configured before it can boot. GOOGLE_PLACE_ID identifies the
+  // business listing to pull reviews from (Google Cloud Console > Places
+  // API > Place ID Finder).
+  GOOGLE_PLACES_API_KEY: optionalSecret(),
+  GOOGLE_PLACE_ID: optionalSecret(),
 });
 
 /**

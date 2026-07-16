@@ -209,7 +209,7 @@ export function Navbar({
         </ul>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <HeaderSearch />
+          <HeaderSearch locale={locale} />
           <Button
             variant="outline-gold"
             size="sm"
@@ -254,7 +254,7 @@ export function Navbar({
       {/* Mobile-only search row, directly under the header (Tanishq-style) —
           replaces the icon-triggered dropdown, which stays desktop-only. */}
       <div className="border-t border-border px-4 py-2.5 sm:hidden">
-        <HeaderSearch variant="bar" />
+        <HeaderSearch variant="bar" locale={locale} />
       </div>
 
       <MegaMenu

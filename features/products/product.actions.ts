@@ -60,6 +60,13 @@ interface ProductDoc {
   isFeatured: boolean;
   isPublished: boolean;
   tags: string[];
+  barcode?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  canonicalUrl?: string | null;
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImageUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +101,13 @@ function toProduct(doc: ProductDoc): Product {
     isFeatured: doc.isFeatured,
     isPublished: doc.isPublished,
     tags: doc.tags,
+    barcode: doc.barcode ?? undefined,
+    metaTitle: doc.metaTitle ?? undefined,
+    metaDescription: doc.metaDescription ?? undefined,
+    canonicalUrl: doc.canonicalUrl ?? undefined,
+    ogTitle: doc.ogTitle ?? undefined,
+    ogDescription: doc.ogDescription ?? undefined,
+    ogImageUrl: doc.ogImageUrl ?? undefined,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };

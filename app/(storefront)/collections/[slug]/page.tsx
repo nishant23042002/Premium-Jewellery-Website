@@ -17,6 +17,13 @@ import { safeQuery } from "@/lib/db/safe-query";
 import { canonicalFor } from "@/lib/seo/config";
 import { siteConfig } from "@/config/site.config";
 import { ROUTES } from "@/constants/routes";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/dictionary";
+import { pickLocalized } from "@/lib/i18n/pick-localized";
+import type { LocalizedText } from "@/types/common";
+
+/** Singular "Collection" label — the shared dictionary only has the plural "collections". */
+const COLLECTION_SINGULAR: LocalizedText = { en: "Collection", hi: "कलेक्शन", mr: "कलेक्शन" };
 
 interface CollectionPageProps {
   params: Promise<{ slug: string }>;
@@ -41,7 +48,10 @@ export default async function CollectionDetailPage({
   params,
 }: CollectionPageProps) {
   const { slug } = await params;
-  const collection = await safeQuery(() => getCollectionBySlug(slug), null);
+  const [collection, locale] = await Promise.all([
+    safeQuery(() => getCollectionBySlug(slug), null),
+    getStorefrontLocale(),
+  ]);
 
   if (!collection) notFound();
 
@@ -63,11 +73,13 @@ export default async function CollectionDetailPage({
         ]}
       />
       <PageHero
-        eyebrow="Collection"
-        title={collection.name.en}
+        eyebrow={COLLECTION_SINGULAR[locale]}
+        title={pickLocalized(collection.name, locale)}
         breadcrumbs={[
-          { label: "Collections", href: ROUTES.collections },
-          { label: collection.name.en },
+          { label: t("collections", locale), href: ROUTES.collections },
+          { label: pickLocalized(collection.name, locale) },
+        ]}
+        locale={locale}
         ]}
       />
 
@@ -77,7 +89,7 @@ export default async function CollectionDetailPage({
             {collection.imageUrl ? (
               <Image
                 src={collection.imageUrl}
-                alt={collection.name.en}
+                alt={pickLocalized(collection.name, locale)}
                 fill
                 className="object-cover"
                 sizes="(min-width: 1024px) 50vw, 100vw"
@@ -92,7 +104,7 @@ export default async function CollectionDetailPage({
           </ImageReveal>
           <Reveal direction="left">
             <p className="text-sm text-muted-foreground">
-              {collection.description?.en ||
+              {pickLocalized(collection.description, locale) ||
                 "A handpicked selection of pieces our staff reach for first when a customer asks “what would you recommend?”"}
             </p>
           </Reveal>
@@ -104,7 +116,12 @@ export default async function CollectionDetailPage({
           <Container>
             <Grid cols={{ base: 2, lg: 4 }} gap="lg">
               {picks.map(({ product, price }) => (
-                <ProductCard key={product.id} product={product} price={price} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  price={price}
+                  locale={locale}
+                />
               ))}
             </Grid>
           </Container>

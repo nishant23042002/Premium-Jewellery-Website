@@ -122,7 +122,7 @@ export async function createReservation(
           tenantId: DEFAULT_TENANT_ID,
           _id: { $in: productIds },
         })
-          .select("_id name slug")
+          .select("_id name slug images")
           .lean()
       : Promise.resolve([]),
     // Guest reservations are the common case — this is best-effort, not required.
@@ -145,10 +145,25 @@ export async function createReservation(
 
   const reservation = toReservation(doc.toObject());
 
+  // Best-effort image attach (not persisted — see ReservationProductRef)
+  // straight from the products already fetched above, so the "new
+  // reservation" admin/customer emails can show real thumbnails without a
+  // second DB round-trip.
+  const imageUrlByProductId = new Map(
+    products.map((p) => [String(p._id), p.images?.[0]?.url]),
+  );
+  const reservationWithImages: Reservation = {
+    ...reservation,
+    products: reservation.products.map((p) => ({
+      ...p,
+      imageUrl: imageUrlByProductId.get(p.productId),
+    })),
+  };
+
   // Fire-and-forget-adjacent: notification/directory failures shouldn't
   // fail the reservation itself — the record is already saved and visible
   // to admin.
-  notifyReservationCreated(reservation).catch((error) =>
+  notifyReservationCreated(reservationWithImages).catch((error) =>
     logger.error("notifyReservationCreated", "failed", { error }),
   );
   upsertCustomerFromContact({
@@ -241,7 +256,12 @@ export async function getReservationById(
     _id: id,
     tenantId: DEFAULT_TENANT_ID,
   }).lean();
-  return doc ? toReservation(doc as unknown as ReservationDoc) : null;
+  if (!doc) return null;
+
+  const [reservation] = await attachProductImages([
+    toReservation(doc as unknown as ReservationDoc),
+  ]);
+  return reservation;
 }
 
 /** Powers the "My Reservations" account page — guest reservations (no customerId) never show up here, only ones made while signed in. */
@@ -377,8 +397,13 @@ async function changeReservationStatus(
     },
     { returnDocument: "after" },
   );
+  if (!doc) return null;
 
-  return doc ? toReservation(doc.toObject()) : null;
+  // Attached here (rather than at each caller) so both the admin dashboard's
+  // "Send WhatsApp Update" prompt and the status-change email notification
+  // always have the product photo available for the customer-facing message.
+  const [reservation] = await attachProductImages([toReservation(doc.toObject())]);
+  return reservation;
 }
 
 export async function updateReservationStatus(

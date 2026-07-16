@@ -9,6 +9,7 @@ import { MouseGlow } from "@/components/motion/mouse-glow";
 import { CollectionCard } from "@/components/storefront/collection-card";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
+import { t } from "@/lib/i18n/dictionary";
 import type { Collection } from "@/features/collections/collection.types";
 import type { Locale } from "@/types/common";
 
@@ -103,15 +104,25 @@ export function CollectionBentoGrid({
       {/* Mobile only: the 2-col bento crams each tile into ~45vw, wrapping
           titles and shrinking images too far to read as "curated" — below
           sm it's replaced with a full-width swipeable rail. Desktop/tablet
-          keep the untouched bento. */}
-      <div className="-mx-4 flex snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto px-4 pt-6 pb-1 sm:hidden [&::-webkit-scrollbar]:hidden">
+          keep the untouched bento.
+
+          Side padding is `(100% - card width) / 2` — matching the card's
+          own `w-[78%]` — rather than a fixed px-4. With a fixed padding,
+          only *interior* cards got a peek of a neighbor on both sides; the
+          first/last card could only ever peek on one side, since
+          scroll-snap can't overscroll past the content edge. Matching the
+          padding to the leftover width means every snapped position,
+          including the first and last card, always has that same reserved
+          space on both sides — so it always reads as "one card centered,
+          neighbors peeking," never a card flush against the screen edge. */}
+      <div className="-mx-4 flex snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto px-[11%] pt-6 pb-1 sm:hidden [&::-webkit-scrollbar]:hidden">
         {collections.map((collection) => (
           <div key={collection.id} className="w-[78%] shrink-0 snap-center">
             <CollectionCard
               item={collection}
               href={ROUTES.collection(collection.slug)}
               locale={locale}
-              eyebrow="Collection"
+              eyebrow={t("collectionEyebrow", locale)}
             />
           </div>
         ))}

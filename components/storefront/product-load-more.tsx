@@ -6,6 +6,7 @@ import { Grid } from "@/components/common/grid";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront/product-card";
 import { listProducts, type ProductWithPrice, type ListProductsParams } from "@/features/products/product.actions";
+import { t } from "@/lib/i18n/dictionary";
 import type { Locale } from "@/types/common";
 
 /**
@@ -67,7 +68,7 @@ export function ProductLoadMore({
         <div className="flex justify-center">
           <Button variant="outline" onClick={loadMore} disabled={isPending}>
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            Load More
+            {t("loadMore", locale)}
           </Button>
         </div>
       )}

@@ -13,7 +13,11 @@ import { listCollections } from "@/features/collections/collection.actions";
 import { safeQuery } from "@/lib/db/safe-query";
 import { canonicalFor } from "@/lib/seo/config";
 import { ROUTES } from "@/constants/routes";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/dictionary";
+import { pickLocalized } from "@/lib/i18n/pick-localized";
 import type { Collection } from "@/features/collections/collection.types";
+import type { Locale, LocalizedText } from "@/types/common";
 
 export const metadata: Metadata = {
   title: "Collections",
@@ -22,16 +26,38 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.collections),
 };
 
+/** Page-local copy not in the shared dictionary. */
+const COLLECTIONS_PAGE_COPY: Record<string, LocalizedText> = {
+  eyebrow: { en: "Discover", hi: "खोजें", mr: "शोधा" },
+  title: { en: "Curated Collections", hi: "चुनिंदा कलेक्शन", mr: "निवडक कलेक्शन" },
+  description: {
+    en: "Beyond category, our collections group pieces by occasion and story — an easier way to shop with intent.",
+    hi: "श्रेणी से परे, हमारे कलेक्शन आभूषणों को अवसर और कहानी के अनुसार समूहित करते हैं — इरादे के साथ खरीदारी करने का आसान तरीका।",
+    mr: "श्रेणीच्या पलीकडे, आमचे कलेक्शन दागिन्यांना प्रसंग आणि कथेनुसार गटबद्ध करतात — हेतुपुरस्सर खरेदी करण्याचा सोपा मार्ग.",
+  },
+  emptyState: {
+    en: "Our curated collections are being put together — check back shortly.",
+    hi: "हमारे चुनिंदा कलेक्शन तैयार किए जा रहे हैं — जल्द ही दोबारा देखें।",
+    mr: "आमचे निवडक कलेक्शन तयार केले जात आहेत — लवकरच पुन्हा तपासा.",
+  },
+  theEdit: { en: "The Edit", hi: "द एडिट", mr: "द एडिट" },
+  viewCollection: { en: "View Collection", hi: "कलेक्शन देखें", mr: "कलेक्शन पहा" },
+};
+
 export default async function CollectionsPage() {
-  const collections = await safeQuery(() => listCollections(), []);
+  const [collections, locale] = await Promise.all([
+    safeQuery(() => listCollections(), []),
+    getStorefrontLocale(),
+  ]);
 
   return (
     <>
       <PageHero
-        eyebrow="Discover"
-        title="Curated Collections"
-        description="Beyond category, our collections group pieces by occasion and story — an easier way to shop with intent."
-        breadcrumbs={[{ label: "Collections" }]}
+        eyebrow={COLLECTIONS_PAGE_COPY.eyebrow[locale]}
+        title={COLLECTIONS_PAGE_COPY.title[locale]}
+        description={COLLECTIONS_PAGE_COPY.description[locale]}
+        breadcrumbs={[{ label: t("collections", locale) }]}
+        locale={locale}
       />
 
       <section className="section pt-0">
@@ -42,13 +68,13 @@ export default async function CollectionsPage() {
                 key={collection.id}
                 collection={collection}
                 reverse={i % 2 === 1}
+                locale={locale}
               />
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-border py-16 text-center">
               <p className="text-sm text-muted-foreground">
-                Our curated collections are being put together — check back
-                shortly.
+                {COLLECTIONS_PAGE_COPY.emptyState[locale]}
               </p>
             </div>
           )}
@@ -63,9 +89,11 @@ export default async function CollectionsPage() {
 function CollectionRow({
   collection,
   reverse,
+  locale,
 }: {
   collection: Collection;
   reverse?: boolean;
+  locale: Locale;
 }) {
   return (
     <div className="grid items-center gap-10 lg:grid-cols-2">
@@ -75,7 +103,7 @@ function CollectionRow({
         {collection.imageUrl ? (
           <Image
             src={collection.imageUrl}
-            alt={collection.name.en}
+            alt={pickLocalized(collection.name, locale)}
             fill
             className="object-cover"
             sizes="(min-width: 1024px) 50vw, 100vw"
@@ -93,11 +121,13 @@ function CollectionRow({
         className={reverse ? "lg:order-1" : undefined}
       >
         <p className="text-gradient-gold mb-3 text-xs font-medium tracking-[0.2em] uppercase">
-          The Edit
+          {COLLECTIONS_PAGE_COPY.theEdit[locale]}
         </p>
-        <h2 className="font-heading text-3xl">{collection.name.en}</h2>
+        <h2 className="font-heading text-3xl">
+          {pickLocalized(collection.name, locale)}
+        </h2>
         <p className="mt-4 max-w-md text-sm text-muted-foreground">
-          {collection.description?.en ||
+          {pickLocalized(collection.description, locale) ||
             `A handpicked selection from our ${collection.name.en.toLowerCase()} edit.`}
         </p>
         <div className="mt-6 flex gap-3">
@@ -106,7 +136,7 @@ function CollectionRow({
             nativeButton={false}
             render={
               <Link href={ROUTES.collection(collection.slug)}>
-                View Collection
+                {COLLECTIONS_PAGE_COPY.viewCollection[locale]}
               </Link>
             }
           />

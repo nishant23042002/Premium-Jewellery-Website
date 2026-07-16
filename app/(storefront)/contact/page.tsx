@@ -5,11 +5,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Reveal } from "@/components/motion/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
 import { EnquiryForm } from "@/components/storefront/enquiry-form";
+import { canonicalFor } from "@/lib/seo/config";
 import { SITE } from "@/constants/site";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Contact Us",
   description: `Get in touch with ${SITE.name} — phone, address, and showroom hours.`,
+  keywords: [
+    `contact ${SITE.name}`,
+    `jewellery showroom ${SITE.address.city}`,
+    `jeweller near ${SITE.address.city}`,
+  ],
+  ...canonicalFor(ROUTES.contact),
 };
 
 export default function ContactPage() {

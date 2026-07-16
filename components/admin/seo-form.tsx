@@ -36,6 +36,7 @@ export function SeoForm({ config }: { config: SeoConfig }) {
     defaultValues: {
       defaultTitle: config.defaultTitle ?? "",
       defaultDescription: config.defaultDescription ?? "",
+      defaultKeywords: config.defaultKeywords ?? "",
       ogImageUrl: config.ogImageUrl ?? "",
     },
   });
@@ -87,6 +88,22 @@ export function SeoForm({ config }: { config: SeoConfig }) {
                   </FormLabel>
                   <FormControl>
                     <Textarea rows={3} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="defaultKeywords"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="inline-flex items-center gap-1.5">
+                    Default keywords (optional)
+                    <FieldHelp helpKey="seo.defaultKeywords" />
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="gold jewellery, diamond jewellery, Roha jewellers" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

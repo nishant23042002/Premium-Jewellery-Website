@@ -98,6 +98,13 @@ export const productFormSchema = z.object({
   isFeatured: z.boolean().default(false),
   isPublished: z.boolean().default(false),
   tags: z.array(z.string()).default([]),
+  barcode: z.string().trim().optional(),
+  metaTitle: z.string().trim().max(70).optional(),
+  metaDescription: z.string().trim().max(160).optional(),
+  canonicalUrl: z.string().trim().url().optional().or(z.literal("")),
+  ogTitle: z.string().trim().max(70).optional(),
+  ogDescription: z.string().trim().max(200).optional(),
+  ogImageUrl: z.string().trim().url().optional().or(z.literal("")),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;

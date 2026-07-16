@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2, Lock } from "lucide-react";
@@ -16,6 +17,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  AdminAuthDivider,
+  AdminGoogleSignInButton,
+} from "@/components/admin/admin-google-signin-button";
 import { loginAction } from "@/features/auth/auth.actions";
 import {
   loginFormSchema,
@@ -24,9 +29,26 @@ import {
 import { toast } from "@/lib/toast";
 import { ROUTES, SITE } from "@/constants";
 
+const GOOGLE_LOGIN_ERROR_MESSAGES: Record<string, string> = {
+  google_not_configured: "Google sign-in isn't configured for this site.",
+  google_rate_limited: "Too many attempts. Please try again shortly.",
+  google_denied: "Google sign-in was cancelled.",
+  google_invalid_state: "That link expired. Please try again.",
+  google_not_linked:
+    "That Google account isn't linked to an admin. Sign in with your password, then link Google from Settings > Security.",
+  google_account_deactivated: "This account has been deactivated.",
+  google_signin_failed: "Couldn't sign in with Google. Please try again.",
+  session_required: "Sign in with your password first, then link Google from Settings.",
+};
+
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const googleError = searchParams.get("error");
+  const googleErrorMessage = googleError
+    ? (GOOGLE_LOGIN_ERROR_MESSAGES[googleError] ?? "Couldn't sign in with Google.")
+    : undefined;
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -60,6 +82,17 @@ export default function AdminLoginPage() {
             </div>
             <h1 className="font-heading text-xl">{SITE.name}</h1>
             <p className="text-xs text-muted-foreground">Admin sign-in</p>
+          </div>
+
+          {googleErrorMessage && (
+            <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-center text-sm text-destructive">
+              {googleErrorMessage}
+            </p>
+          )}
+
+          <div className="mb-4 space-y-4">
+            <AdminGoogleSignInButton />
+            <AdminAuthDivider />
           </div>
 
           <Form {...form}>
@@ -98,6 +131,14 @@ export default function AdminLoginPage() {
                   </FormItem>
                 )}
               />
+              <p className="text-right">
+                <Link
+                  href={ROUTES.admin.forgotPassword}
+                  className="text-xs text-gold-dark hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </p>
               <Button
                 type="submit"
                 variant="gold"

@@ -20,6 +20,7 @@ function toCategory(doc: {
   tenantId: string;
   slug: string;
   name: Category["name"];
+  description?: Category["description"] | null;
   imageUrl?: string | null;
   sortOrder: number;
   parentId?: unknown;
@@ -32,6 +33,7 @@ function toCategory(doc: {
     tenantId: doc.tenantId,
     slug: doc.slug,
     name: doc.name,
+    description: doc.description ?? undefined,
     imageUrl: doc.imageUrl ?? undefined,
     sortOrder: doc.sortOrder,
     parentId: doc.parentId ? String(doc.parentId) : null,

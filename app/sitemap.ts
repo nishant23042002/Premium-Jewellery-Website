@@ -5,6 +5,7 @@ import { ProductModel } from "@/features/products/product.model";
 import { CategoryModel } from "@/features/categories/category.model";
 import { CollectionModel } from "@/features/collections/collection.model";
 import { BlogPostModel } from "@/features/blog/blog-post.model";
+import { CmsPageModel } from "@/features/pages/page.model";
 import { clientEnv } from "@/config/env";
 import { ROUTES } from "@/constants/routes";
 
@@ -44,11 +45,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = clientEnv.NEXT_PUBLIC_SITE_URL;
   const filter = { tenantId: DEFAULT_TENANT_ID, isPublished: true, ...NOT_DELETED_FILTER };
 
-  const [products, categories, collections, blogPosts] = await Promise.all([
+  const [products, categories, collections, blogPosts, cmsPages] = await Promise.all([
     ProductModel.find(filter).select("slug updatedAt").lean(),
     CategoryModel.find(filter).select("slug updatedAt").lean(),
     CollectionModel.find(filter).select("slug updatedAt").lean(),
     BlogPostModel.find(filter).select("slug updatedAt").lean(),
+    CmsPageModel.find(filter).select("slug updatedAt").lean(),
   ]);
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map(
@@ -88,11 +90,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
+  const cmsPageEntries: MetadataRoute.Sitemap = cmsPages.map((doc) => ({
+    url: `${baseUrl}/pages/${doc.slug}`,
+    lastModified: doc.updatedAt,
+    changeFrequency: "monthly",
+    priority: 0.3,
+  }));
+
   return [
     ...staticEntries,
     ...productEntries,
     ...categoryEntries,
     ...collectionEntries,
     ...blogEntries,
+    ...cmsPageEntries,
   ];
 }

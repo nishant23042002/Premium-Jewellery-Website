@@ -17,41 +17,76 @@ import { useProductFilters } from "@/hooks/use-product-filters";
 import { VALID_AVAILABILITIES, VALID_METAL_TYPES } from "@/lib/products/filter-params";
 import { formatINR } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n/dictionary";
 import type { Category } from "@/features/categories/category.types";
 import type { Collection } from "@/features/collections/collection.types";
+import type { Locale, LocalizedText } from "@/types/common";
 
-const METAL_LABELS: Record<string, string> = {
-  gold: "Gold",
-  silver: "Silver",
-  platinum: "Platinum",
-  diamond: "Diamond",
-  other: "Other",
+const METAL_LABELS: Record<string, LocalizedText> = {
+  gold: { en: "Gold", hi: "सोना", mr: "सोने" },
+  silver: { en: "Silver", hi: "चांदी", mr: "चांदी" },
+  platinum: { en: "Platinum", hi: "प्लैटिनम", mr: "प्लॅटिनम" },
+  diamond: { en: "Diamond", hi: "हीरा", mr: "हिरा" },
+  other: { en: "Other", hi: "अन्य", mr: "इतर" },
 };
 
-const AVAILABILITY_LABELS: Record<string, string> = {
-  in_showroom: "In Showroom",
-  made_to_order: "Made to Order",
-  reserved: "Reserved",
+const AVAILABILITY_LABELS: Record<string, LocalizedText> = {
+  in_showroom: { en: "In Showroom", hi: "शोरूम में", mr: "शोरूममध्ये" },
+  made_to_order: { en: "Made to Order", hi: "ऑर्डर पर निर्मित", mr: "ऑर्डरनुसार बनवलेले" },
+  reserved: { en: "Reserved", hi: "आरक्षित", mr: "राखीव" },
 };
 
-const PRICE_PRESETS = [
-  { label: "Under ₹25,000", min: undefined, max: 25000 },
-  { label: "₹25,000 – ₹75,000", min: 25000, max: 75000 },
-  { label: "₹75,000 – ₹1,50,000", min: 75000, max: 150000 },
-  { label: "Above ₹1,50,000", min: 150000, max: undefined },
+const PRICE_PRESETS: { label: LocalizedText; min: number | undefined; max: number | undefined }[] = [
+  {
+    label: { en: "Under ₹25,000", hi: "₹25,000 से कम", mr: "₹25,000 पेक्षा कमी" },
+    min: undefined,
+    max: 25000,
+  },
+  {
+    label: { en: "₹25,000 – ₹75,000", hi: "₹25,000 – ₹75,000", mr: "₹25,000 – ₹75,000" },
+    min: 25000,
+    max: 75000,
+  },
+  {
+    label: { en: "₹75,000 – ₹1,50,000", hi: "₹75,000 – ₹1,50,000", mr: "₹75,000 – ₹1,50,000" },
+    min: 75000,
+    max: 150000,
+  },
+  {
+    label: { en: "Above ₹1,50,000", hi: "₹1,50,000 से ज़्यादा", mr: "₹1,50,000 पेक्षा जास्त" },
+    min: 150000,
+    max: undefined,
+  },
 ];
+
+const FILTER_CONTROLS_COPY: Record<string, LocalizedText> = {
+  searchCategories: {
+    en: "Search categories...",
+    hi: "श्रेणियाँ खोजें...",
+    mr: "श्रेण्या शोधा...",
+  },
+  noCategoriesMatch: {
+    en: "No categories match",
+    hi: "कोई श्रेणी मेल नहीं खाती",
+    mr: "कोणतीही श्रेणी जुळत नाही",
+  },
+  to: { en: "to", hi: "से", mr: "ते" },
+  noMax: { en: "No max", hi: "कोई अधिकतम नहीं", mr: "कमाल मर्यादा नाही" },
+};
 
 interface FilterControlsProps {
   categories: Category[];
   collections: Collection[];
   /** Sticky sidebar sections default open; the mobile sheet starts collapsed to save vertical space. */
   defaultOpenSections?: string[];
+  locale?: Locale;
 }
 
 export function FilterControls({
   categories,
   collections,
   defaultOpenSections = ["collections", "categories", "price", "metal"],
+  locale = "en",
 }: FilterControlsProps) {
   const {
     filters,
@@ -92,7 +127,7 @@ export function FilterControls({
     <div className="space-y-1">
       <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/20 px-3 py-2.5">
         <Label htmlFor="new-arrival-filter" className="text-sm font-normal">
-          New Arrivals Only
+          {t("newArrivalsOnly", locale)}
         </Label>
         <Switch
           id="new-arrival-filter"
@@ -104,7 +139,7 @@ export function FilterControls({
       <Accordion defaultValue={defaultOpenSections}>
         {collections.length > 0 && (
           <AccordionItem value="collections">
-            <AccordionTrigger>Collections</AccordionTrigger>
+            <AccordionTrigger>{t("collections", locale)}</AccordionTrigger>
             <AccordionContent>
               <ul className="space-y-2">
                 {collections.map((collection) => (
@@ -132,7 +167,7 @@ export function FilterControls({
         )}
 
         <AccordionItem value="categories">
-          <AccordionTrigger>Categories</AccordionTrigger>
+          <AccordionTrigger>{t("categories", locale)}</AccordionTrigger>
           <AccordionContent>
             {categories.length > 6 && (
               <div className="relative mb-2">
@@ -140,7 +175,7 @@ export function FilterControls({
                 <Input
                   value={categoryQuery}
                   onChange={(e) => setCategoryQuery(e.target.value)}
-                  placeholder="Search categories..."
+                  placeholder={FILTER_CONTROLS_COPY.searchCategories[locale]}
                   className="h-8 pl-8 text-xs"
                 />
               </div>
@@ -179,7 +214,8 @@ export function FilterControls({
               ))}
               {filteredCategories.roots.length === 0 && (
                 <li className="py-2 text-xs text-muted-foreground">
-                  No categories match &ldquo;{categoryQuery}&rdquo;.
+                  {FILTER_CONTROLS_COPY.noCategoriesMatch[locale]} &ldquo;{categoryQuery}
+                  &rdquo;.
                 </li>
               )}
             </ul>
@@ -187,7 +223,7 @@ export function FilterControls({
         </AccordionItem>
 
         <AccordionItem value="price">
-          <AccordionTrigger>Price Range</AccordionTrigger>
+          <AccordionTrigger>{t("priceRange", locale)}</AccordionTrigger>
           <AccordionContent>
             <div className="mb-3 flex flex-wrap gap-1.5">
               {PRICE_PRESETS.map((preset) => {
@@ -195,7 +231,7 @@ export function FilterControls({
                   filters.priceMin === preset.min && filters.priceMax === preset.max;
                 return (
                   <button
-                    key={preset.label}
+                    key={preset.label.en}
                     type="button"
                     onClick={() =>
                       setPriceRange(
@@ -210,7 +246,7 @@ export function FilterControls({
                         : "border-border text-muted-foreground hover:border-gold/40",
                     )}
                   >
-                    {preset.label}
+                    {preset.label[locale]}
                   </button>
                 );
               })}
@@ -220,7 +256,7 @@ export function FilterControls({
                 type="number"
                 inputMode="numeric"
                 min={0}
-                placeholder="Min"
+                placeholder={t("min", locale)}
                 defaultValue={filters.priceMin ?? ""}
                 onBlur={(e) =>
                   setPriceRange(
@@ -230,12 +266,14 @@ export function FilterControls({
                 }
                 className="h-8 text-xs"
               />
-              <span className="text-xs text-muted-foreground">to</span>
+              <span className="text-xs text-muted-foreground">
+                {FILTER_CONTROLS_COPY.to[locale]}
+              </span>
               <Input
                 type="number"
                 inputMode="numeric"
                 min={0}
-                placeholder="Max"
+                placeholder={t("max", locale)}
                 defaultValue={filters.priceMax ?? ""}
                 onBlur={(e) =>
                   setPriceRange(
@@ -250,14 +288,16 @@ export function FilterControls({
               <p className="mt-1.5 text-xs text-muted-foreground">
                 {filters.priceMin !== undefined ? formatINR(filters.priceMin) : "₹0"}
                 {" – "}
-                {filters.priceMax !== undefined ? formatINR(filters.priceMax) : "No max"}
+                {filters.priceMax !== undefined
+                  ? formatINR(filters.priceMax)
+                  : FILTER_CONTROLS_COPY.noMax[locale]}
               </p>
             )}
           </AccordionContent>
         </AccordionItem>
 
         <AccordionItem value="metal">
-          <AccordionTrigger>Metal Type</AccordionTrigger>
+          <AccordionTrigger>{t("metalType", locale)}</AccordionTrigger>
           <AccordionContent>
             <ul className="space-y-2">
               {VALID_METAL_TYPES.map((metal) => (
@@ -268,7 +308,7 @@ export function FilterControls({
                       onCheckedChange={() => toggleMetalType(metal)}
                     />
                     <span className="text-muted-foreground">
-                      {METAL_LABELS[metal]}
+                      {METAL_LABELS[metal][locale]}
                     </span>
                   </label>
                 </li>
@@ -278,14 +318,14 @@ export function FilterControls({
         </AccordionItem>
 
         <AccordionItem value="weight">
-          <AccordionTrigger>Weight (grams)</AccordionTrigger>
+          <AccordionTrigger>{t("weightGrams", locale)}</AccordionTrigger>
           <AccordionContent>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
-                placeholder="Min"
+                placeholder={t("min", locale)}
                 defaultValue={filters.weightMin ?? ""}
                 onBlur={(e) =>
                   setWeightRange(
@@ -295,12 +335,14 @@ export function FilterControls({
                 }
                 className="h-8 text-xs"
               />
-              <span className="text-xs text-muted-foreground">to</span>
+              <span className="text-xs text-muted-foreground">
+                {FILTER_CONTROLS_COPY.to[locale]}
+              </span>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
-                placeholder="Max"
+                placeholder={t("max", locale)}
                 defaultValue={filters.weightMax ?? ""}
                 onBlur={(e) =>
                   setWeightRange(
@@ -315,7 +357,7 @@ export function FilterControls({
         </AccordionItem>
 
         <AccordionItem value="availability">
-          <AccordionTrigger>Availability</AccordionTrigger>
+          <AccordionTrigger>{t("availability", locale)}</AccordionTrigger>
           <AccordionContent>
             <ul className="space-y-2">
               {VALID_AVAILABILITIES.map((availability) => (
@@ -326,7 +368,7 @@ export function FilterControls({
                       onCheckedChange={() => toggleAvailability(availability)}
                     />
                     <span className="text-muted-foreground">
-                      {AVAILABILITY_LABELS[availability]}
+                      {AVAILABILITY_LABELS[availability][locale]}
                     </span>
                   </label>
                 </li>
@@ -340,11 +382,17 @@ export function FilterControls({
 }
 
 /** Small "X selected, clear" footer shown under the filter controls in both desktop and mobile layouts. */
-export function ClearAllButton({ onClear }: { onClear: () => void }) {
+export function ClearAllButton({
+  onClear,
+  locale = "en",
+}: {
+  onClear: () => void;
+  locale?: Locale;
+}) {
   return (
     <Button variant="ghost" size="sm" className="w-full" onClick={onClear}>
       <X className="size-3.5" />
-      Clear All Filters
+      {t("clearAllFilters", locale)}
     </Button>
   );
 }

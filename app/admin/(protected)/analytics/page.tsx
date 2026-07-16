@@ -4,11 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AreaTrendChart } from "@/components/common/area-trend-chart";
 import { DonutChart } from "@/components/common/donut-chart";
 import { RankedBarList } from "@/components/common/ranked-bar-list";
+import { RankedImageList } from "@/components/common/ranked-image-list";
 import { StatCard } from "@/components/admin/stat-card";
 import {
   getAnalyticsSummary,
+  getMostViewedProducts,
   getReservationInsights,
   getSearchInsights,
+  getZeroResultSearchInsights,
 } from "@/features/analytics/analytics.actions";
 import { getVisitorAnalytics } from "@/features/visitor-analytics/page-view.actions";
 import { safeQuery } from "@/lib/db/safe-query";
@@ -39,12 +42,15 @@ const EMPTY_VISITOR_ANALYTICS = {
 };
 
 export default async function AdminAnalyticsPage() {
-  const [summary, insights, searchInsights, visitors] = await Promise.all([
-    safeQuery(() => getAnalyticsSummary(), EMPTY_SUMMARY),
-    safeQuery(() => getReservationInsights(), EMPTY_INSIGHTS),
-    safeQuery(() => getSearchInsights(), []),
-    safeQuery(() => getVisitorAnalytics(), EMPTY_VISITOR_ANALYTICS),
-  ]);
+  const [summary, insights, searchInsights, zeroResultSearches, mostViewed, visitors] =
+    await Promise.all([
+      safeQuery(() => getAnalyticsSummary(), EMPTY_SUMMARY),
+      safeQuery(() => getReservationInsights(), EMPTY_INSIGHTS),
+      safeQuery(() => getSearchInsights(), []),
+      safeQuery(() => getZeroResultSearchInsights(), []),
+      safeQuery(() => getMostViewedProducts(), []),
+      safeQuery(() => getVisitorAnalytics(), EMPTY_VISITOR_ANALYTICS),
+    ]);
 
   return (
     <div className="mx-auto max-w-(--container-wide)">
@@ -204,7 +210,7 @@ export default async function AdminAnalyticsPage() {
             <CardTitle>Products by Category</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
-            <RankedBarList
+            <RankedImageList
               data={summary.productsByCategory}
               emptyLabel="No products yet."
             />
@@ -232,15 +238,30 @@ export default async function AdminAnalyticsPage() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 sm:grid-cols-2">
+      <h2 className="mt-6 mb-3 text-sm font-medium text-muted-foreground">
+        What&apos;s Working (and What Isn&apos;t)
+      </h2>
+      <div className="grid gap-6 sm:grid-cols-2">
         <Card className="border-border/60">
           <CardHeader>
             <CardTitle>Most Reserved Jewellery</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
-            <RankedBarList
+            <RankedImageList
               data={insights.mostReservedProducts}
               emptyLabel="No reservations yet."
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardHeader>
+            <CardTitle>Most Viewed Products</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <RankedImageList
+              data={mostViewed}
+              emptyLabel="No product views logged in the last 30 days."
             />
           </CardContent>
         </Card>
@@ -250,7 +271,7 @@ export default async function AdminAnalyticsPage() {
             <CardTitle>Most Reserved Categories</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
-            <RankedBarList
+            <RankedImageList
               data={insights.mostReservedCategories}
               emptyLabel="No reservations yet."
             />
@@ -262,7 +283,7 @@ export default async function AdminAnalyticsPage() {
             <CardTitle>Top Performing Collections</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
-            <RankedBarList
+            <RankedImageList
               data={insights.topCollections}
               emptyLabel="No collection has been reserved from yet."
             />
@@ -277,6 +298,24 @@ export default async function AdminAnalyticsPage() {
             <RankedBarList
               data={searchInsights}
               emptyLabel="No searches logged yet."
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardHeader>
+            <CardTitle>Searches With No Results</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            {zeroResultSearches.length > 0 && (
+              <p className="mb-3 text-xs text-muted-foreground">
+                What customers are looking for that isn&apos;t in the catalogue yet — a
+                direct cue for what to stock or add next.
+              </p>
+            )}
+            <RankedBarList
+              data={zeroResultSearches}
+              emptyLabel="Every recent search has found something — nothing to flag."
             />
           </CardContent>
         </Card>

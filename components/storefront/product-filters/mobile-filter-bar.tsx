@@ -21,8 +21,10 @@ import { FilterControls, ClearAllButton } from "@/components/storefront/product-
 import { useProductFilters } from "@/hooks/use-product-filters";
 import { countActiveFilters } from "@/lib/products/filter-params";
 import { SORT_OPTIONS } from "@/components/storefront/product-sort";
+import { t } from "@/lib/i18n/dictionary";
 import type { Category } from "@/features/categories/category.types";
 import type { Collection } from "@/features/collections/collection.types";
+import type { Locale } from "@/types/common";
 
 /**
  * Mobile-only sticky Filter/Sort trigger row (`lg:hidden`) — Filter opens a
@@ -34,10 +36,12 @@ export function MobileFilterBar({
   categories,
   collections,
   resultCount,
+  locale = "en",
 }: {
   categories: Category[];
   collections: Collection[];
   resultCount: number;
+  locale?: Locale;
 }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const { filters, isPending, clearAll, setSort } = useProductFilters();
@@ -52,7 +56,7 @@ export function MobileFilterBar({
         onClick={() => setFilterOpen(true)}
       >
         <SlidersHorizontal className="size-3.5" />
-        Filters
+        {t("filters", locale)}
         {activeCount > 0 && (
           <span className="ml-1 rounded-full bg-gold/15 px-1.5 text-[0.65rem] font-medium text-gold-dark">
             {activeCount}
@@ -68,7 +72,7 @@ export function MobileFilterBar({
         <SelectContent>
           {SORT_OPTIONS.map((option) => (
             <SelectItem key={option.value} value={option.value}>
-              {option.label}
+              {option.label[locale]}
             </SelectItem>
           ))}
         </SelectContent>
@@ -77,24 +81,27 @@ export function MobileFilterBar({
       <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
         <SheetContent side="bottom" className="flex max-h-[85vh] flex-col p-0">
           <SheetHeader className="border-b border-border">
-            <SheetTitle>Filters</SheetTitle>
+            <SheetTitle>{t("filters", locale)}</SheetTitle>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-4 py-3">
             <p className="mb-3 text-xs text-muted-foreground">
-              {isPending ? "Updating…" : `${resultCount} results`}
+              {isPending
+                ? "Updating…"
+                : `${resultCount} ${t("results", locale)}`}
             </p>
             <FilterControls
               categories={categories}
               collections={collections}
               defaultOpenSections={[]}
+              locale={locale}
             />
           </div>
 
           <SheetFooter className="flex-row gap-2 border-t border-border">
             {activeCount > 0 && (
               <div className="flex-1">
-                <ClearAllButton onClear={clearAll} />
+                <ClearAllButton onClear={clearAll} locale={locale} />
               </div>
             )}
             <Button
@@ -102,7 +109,7 @@ export function MobileFilterBar({
               className="flex-1"
               onClick={() => setFilterOpen(false)}
             >
-              Show {resultCount} Results
+              {t("showResults", locale)} ({resultCount})
             </Button>
           </SheetFooter>
         </SheetContent>

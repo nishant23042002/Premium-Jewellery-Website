@@ -94,6 +94,21 @@ const productSchema = new Schema(
     isFeatured: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: false },
     tags: { type: [String], default: [] },
+    // Not unique — the same design in multiple sizes can legitimately share
+    // a manufacturer barcode. Purely a lookup aid for duplicate detection
+    // during bulk import, not an identity field like slug/skuCode.
+    barcode: { type: String, trim: true },
+    // Per-product SEO overrides — all optional, all fall back to
+    // name/description-derived defaults at render time when unset.
+    // Deliberately no stored JSON-LD/schema field: structured data is
+    // generated from the product's existing fields at render time instead
+    // of hand-authored, so it never drifts out of sync with the real data.
+    metaTitle: { type: String, trim: true },
+    metaDescription: { type: String, trim: true },
+    canonicalUrl: { type: String, trim: true },
+    ogTitle: { type: String, trim: true },
+    ogDescription: { type: String, trim: true },
+    ogImageUrl: { type: String, trim: true },
     deletedAt: deletedAtField,
   },
   { timestamps: true },
@@ -103,6 +118,7 @@ productSchema.index({ tenantId: 1, slug: 1 }, { unique: true });
 productSchema.index({ tenantId: 1, skuCode: 1 }, { unique: true });
 productSchema.index({ tenantId: 1, categoryId: 1, isPublished: 1 });
 productSchema.index({ tenantId: 1, tags: 1 });
+productSchema.index({ tenantId: 1, barcode: 1 }, { sparse: true });
 // Powers relevance-ranked catalogue search (listProducts `query` param) —
 // weights favor an exact-ish name/SKU match over a description mention.
 productSchema.index(

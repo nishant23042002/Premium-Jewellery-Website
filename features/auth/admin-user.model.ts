@@ -16,6 +16,15 @@ const adminUserSchema = new Schema(
     role: { type: String, enum: ["owner", "staff"], default: "staff" },
     roleSlug: { type: String },
     isActive: { type: Boolean, default: true },
+    // Set only via the explicit "Link Google Account" flow while already
+    // signed in (features/auth/auth.actions.ts's linkAdminGoogleAccount) —
+    // never auto-linked by matching email like the customer-side Google
+    // flow does. Login-by-Google looks up this field only, never falls
+    // back to email, so an attacker controlling a Google account with an
+    // admin's email address (e.g. a compromised mail provider) still can't
+    // sign in as that admin without the admin having deliberately linked
+    // this Google identity themselves first.
+    googleId: { type: String, unique: true, sparse: true },
   },
   { timestamps: true },
 );

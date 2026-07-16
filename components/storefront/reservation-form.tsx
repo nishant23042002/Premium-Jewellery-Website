@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
@@ -36,6 +37,36 @@ import { getProductBySlug } from "@/features/products/product.actions";
 import { TIME_SLOTS } from "@/constants/reservation";
 import { BRANCHES, DEFAULT_BRANCH_ID } from "@/constants/branches";
 import { toast } from "@/lib/toast";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
+
+const LOCAL_TEXT = {
+  couldntSubmitThat: {
+    en: "Couldn't submit that",
+    hi: "उसे सबमिट नहीं किया जा सका",
+    mr: "ते सबमिट करता आले नाही",
+  },
+  reservationRequested: {
+    en: "Reservation requested",
+    hi: "आरक्षण का अनुरोध किया गया",
+    mr: "आरक्षणाची विनंती केली",
+  },
+  confirmSlotShortly: {
+    en: "We'll confirm your slot shortly — thank you!",
+    hi: "हम जल्द ही आपका स्लॉट कन्फ़र्म करेंगे — धन्यवाद!",
+    mr: "आम्ही लवकरच तुमचा स्लॉट कन्फर्म करू — धन्यवाद!",
+  },
+  tryAgainOrCall: {
+    en: "Please try again, or call the showroom directly.",
+    hi: "कृपया पुनः प्रयास करें, या सीधे शोरूम पर कॉल करें।",
+    mr: "कृपया पुन्हा प्रयत्न करा, किंवा थेट शोरूमला कॉल करा.",
+  },
+  anythingElse: {
+    en: "Anything else we should know?",
+    hi: "क्या हमें कुछ और जानना चाहिए?",
+    mr: "आम्हाला आणखी काही सांगायचे आहे का?",
+  },
+} as const;
 
 interface ReservationFormProps {
   /** Prefills the product picker when arriving from a product's "Reserve This Piece" button. */
@@ -44,13 +75,24 @@ interface ReservationFormProps {
   prefillCustomer?: { name: string; phone?: string; email: string };
   /** Called after a successful submit, once the form has reset — lets an embedding page (e.g. My Reservations) refresh its own data instead of relying on navigation. */
   onSuccess?: () => void;
+  /**
+   * Navigates here after a successful submit (e.g. /account/reservations
+   * from the standalone Book a Visit page). Only pass this when the visitor
+   * is signed in — a guest reservation has no account to redirect to, so
+   * omitting it there keeps today's toast-only confirmation.
+   */
+  redirectTo?: string;
+  locale?: Locale;
 }
 
 export function ReservationForm({
   prefillProductSlug,
   prefillCustomer,
   onSuccess,
+  redirectTo,
+  locale = "en",
 }: ReservationFormProps) {
+  const router = useRouter();
   const [products, setProducts] = useState<PickedProduct[]>([]);
 
   const form = useForm<ReservationFormInput>({
@@ -89,21 +131,22 @@ export function ReservationForm({
       });
 
       if (!result.success) {
-        toast.error("Couldn't submit that", result.error);
+        toast.error(LOCAL_TEXT.couldntSubmitThat[locale], result.error);
         return;
       }
 
       toast.success(
-        "Reservation requested",
-        "We'll confirm your slot shortly — thank you!",
+        LOCAL_TEXT.reservationRequested[locale],
+        LOCAL_TEXT.confirmSlotShortly[locale],
       );
       form.reset();
       setProducts([]);
       onSuccess?.();
+      if (redirectTo) router.push(redirectTo);
     } catch {
       toast.error(
-        "Couldn't submit that",
-        "Please try again, or call the showroom directly.",
+        LOCAL_TEXT.couldntSubmitThat[locale],
+        LOCAL_TEXT.tryAgainOrCall[locale],
       );
     }
   }
@@ -116,7 +159,7 @@ export function ReservationForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full name</FormLabel>
+              <FormLabel>{t("fullNameLabel", locale)}</FormLabel>
               <FormControl>
                 <Input placeholder="Your name" {...field} />
               </FormControl>
@@ -131,7 +174,7 @@ export function ReservationForm({
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone number</FormLabel>
+                <FormLabel>{t("phoneNumber", locale)}</FormLabel>
                 <FormControl>
                   <Input type="tel" placeholder="+91 98765 43210" {...field} />
                 </FormControl>
@@ -144,7 +187,7 @@ export function ReservationForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email (optional)</FormLabel>
+                <FormLabel>{t("emailOptional", locale)}</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -164,7 +207,7 @@ export function ReservationForm({
             name="preferredDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Preferred date</FormLabel>
+                <FormLabel>{t("preferredDate", locale)}</FormLabel>
                 <FormControl>
                   <Input
                     type="date"
@@ -183,11 +226,11 @@ export function ReservationForm({
             name="preferredTimeSlot"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Preferred time</FormLabel>
+                <FormLabel>{t("preferredTime", locale)}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a slot" />
+                      <SelectValue placeholder={t("chooseASlot", locale)} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -209,11 +252,11 @@ export function ReservationForm({
           name="branchId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Branch</FormLabel>
+              <FormLabel>{t("branch", locale)}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a branch" />
+                    <SelectValue placeholder={t("chooseABranch", locale)} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -230,7 +273,7 @@ export function ReservationForm({
         />
 
         <div className="space-y-1.5">
-          <Label>Pieces you&apos;d like to see (optional)</Label>
+          <Label>{t("piecesYoudLikeToSee", locale)}</Label>
           <ProductPicker selected={products} onChange={setProducts} />
         </div>
 
@@ -239,10 +282,10 @@ export function ReservationForm({
           name="message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Message (optional)</FormLabel>
+              <FormLabel>{t("messageOptional", locale)}</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Anything else we should know?"
+                  placeholder={LOCAL_TEXT.anythingElse[locale]}
                   rows={3}
                   {...field}
                 />
@@ -261,7 +304,7 @@ export function ReservationForm({
           {form.formState.isSubmitting && (
             <Loader2 className="size-4 animate-spin" />
           )}
-          Request Reservation
+          {t("requestReservation", locale)}
         </Button>
       </form>
     </Form>

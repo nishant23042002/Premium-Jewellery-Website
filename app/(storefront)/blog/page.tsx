@@ -5,11 +5,15 @@ import { BlogCard } from "@/components/marketing/blog-card";
 import { PageHero } from "@/components/marketing/page-hero";
 import { listBlogPosts } from "@/features/blog/blog-post.actions";
 import { safeQuery } from "@/lib/db/safe-query";
+import { canonicalFor } from "@/lib/seo/config";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Journal",
   description:
     "Buying guides, care tips, and hallmarking explainers from Shree Ambika Jewellers.",
+  keywords: ["jewellery buying guide", "jewellery care tips", "gold hallmarking guide"],
+  ...canonicalFor(ROUTES.blog),
 };
 
 export default async function BlogIndexPage() {

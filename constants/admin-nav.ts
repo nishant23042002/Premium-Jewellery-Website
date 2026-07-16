@@ -236,6 +236,15 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: Settings,
         permission: "settings.manage",
       },
+      {
+        label: "Security",
+        href: ROUTES.admin.settingsSecurity,
+        icon: Settings,
+        // No permission gate — this manages the signed-in admin's OWN
+        // account (Google account linking), not a site-wide setting, so
+        // every admin/staff member can reach it regardless of their
+        // settings.manage permission.
+      },
     ],
   },
   {

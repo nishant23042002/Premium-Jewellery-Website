@@ -40,7 +40,7 @@ export const SITE = {
 
   social: {
     googleMapsUrl: "",
-    instagramUrl: "",
-    facebookUrl: "",
+    instagramUrl: "https://www.instagram.com/shreeambikajewellers",
+    facebookUrl: "https://www.facebook.com/shreeambikajewellers",
   },
 } as const;

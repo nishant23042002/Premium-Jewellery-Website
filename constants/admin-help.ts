@@ -96,6 +96,11 @@ export const ADMIN_HELP: Record<string, AdminHelpEntry> = {
       "The short summary Google shows under your site's title in search results — not visible on the page itself.",
     siteHref: ROUTES.home,
   },
+  "seo.defaultKeywords": {
+    description:
+      "Comma-separated terms that hint what your site is about to search engines — modern Google mostly ignores these for ranking, but they still help some search engines and directory listings. Not visible on the page itself.",
+    siteHref: ROUTES.home,
+  },
   "seo.ogImageUrl": {
     description:
       "The preview image shown when someone shares your site link on WhatsApp, Facebook, or other social apps — not visible on the page itself.",

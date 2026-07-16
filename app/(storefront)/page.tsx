@@ -29,32 +29,62 @@ import { DEFAULT_HOMEPAGE_CONFIG } from "@/features/homepage/homepage-config.typ
 import { safeQuery } from "@/lib/db/safe-query";
 import { canonicalFor } from "@/lib/seo/config";
 import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { t, type StorefrontDictionaryKey } from "@/lib/i18n/dictionary";
 import { ROUTES, SITE } from "@/constants";
+import type { LocalizedText } from "@/types/common";
+
+/** Not in STOREFRONT_DICTIONARY — only shown on the homepage's "no made-to-order stock yet" fallback state. */
+const ONLINE_EXCLUSIVE_COMING_SOON_TITLE: LocalizedText = {
+  en: "Online Exclusive, Coming Soon",
+  hi: "ऑनलाइन एक्सक्लूसिव, जल्द आ रहा है",
+  mr: "ऑनलाइन एक्सक्लुझिव्ह, लवकरच येत आहे",
+};
+
+const ONLINE_EXCLUSIVE_COMING_SOON_DESC: LocalizedText = {
+  en: "Made-to-order pieces are being added — check back shortly, or visit the showroom to see what's in store today.",
+  hi: "ऑर्डर पर बनने वाले आभूषण जोड़े जा रहे हैं — जल्द ही फिर देखें, या आज शोरूम में उपलब्ध चीज़ें देखने आएं।",
+  mr: "ऑर्डरनुसार बनणारे दागिने जोडले जात आहेत — लवकरच पुन्हा पहा, किंवा आज शोरूममध्ये उपलब्ध वस्तू पाहण्यासाठी भेट द्या.",
+};
 
 export const metadata: Metadata = {
+  keywords: [
+    "jewellery showroom",
+    `jewellery shop in ${SITE.address.city}`,
+    `gold jewellery ${SITE.address.city}`,
+    `${SITE.address.city} jewellers`,
+    "gold jewellery",
+    "diamond jewellery",
+    "silver jewellery",
+    "hallmarked gold",
+    SITE.name,
+  ],
   ...canonicalFor(ROUTES.home),
 };
 
-const TRUST_POINTS = [
+const TRUST_POINTS: {
+  icon: typeof ShieldCheck;
+  labelKey: StorefrontDictionaryKey;
+  detailKey: StorefrontDictionaryKey;
+}[] = [
   {
     icon: ShieldCheck,
-    label: "BIS Hallmarked",
-    detail: "Every gold piece certified",
+    labelKey: "bisHallmarked",
+    detailKey: "bisHallmarkedDetail",
   },
   {
     icon: Sparkles,
-    label: "Transparent Pricing",
-    detail: "Live rate, no hidden charges",
+    labelKey: "transparentPricing",
+    detailKey: "transparentPricingDetail",
   },
   {
     icon: Award,
-    label: "Est. Local Trust",
-    detail: "Generations of Roha families",
+    labelKey: "estLocalTrust",
+    detailKey: "estLocalTrustDetail",
   },
   {
     icon: Gem,
-    label: "Handpicked Craft",
-    detail: "Bridal to everyday fine jewellery",
+    labelKey: "handpickedCraft",
+    detailKey: "handpickedCraftDetail",
   },
 ];
 
@@ -64,23 +94,29 @@ const TRUST_POINTS = [
  * already on this site, not a fabricated feature. Reuses existing photos
  * (no new photography available, same constraint as HERO_SLIDES).
  */
-const DEFAULT_EXPERIENCE_TILES = [
+const DEFAULT_EXPERIENCE_TILES: {
+  titleKey: StorefrontDictionaryKey;
+  href: string;
+  external?: boolean;
+  imageUrl: string;
+  alt: string;
+}[] = [
   {
-    title: "Visit Our Store",
+    titleKey: "visitOurStore",
     href: ROUTES.contact,
     imageUrl:
       "https://res.cloudinary.com/thelayerco/image/upload/v1783788864/Ambika-Jewellers/Luxury_jewelry_showroom_interior_2K_202607112217_ghgyc4.jpg",
     alt: `${SITE.name} showroom interior`,
   },
   {
-    title: "Book an Appointment",
+    titleKey: "bookAnAppointment",
     href: ROUTES.reservation,
     imageUrl:
       "https://res.cloudinary.com/thelayerco/image/upload/v1783788864/Ambika-Jewellers/Luxury_Indian_jewelry_showroom_i__202607112218_eo09br.jpg",
     alt: `${SITE.name} showroom display`,
   },
   {
-    title: "Talk to an Expert",
+    titleKey: "talkToAnExpert",
     href: `https://wa.me/${SITE.whatsappNumber}`,
     external: true,
     imageUrl:
@@ -88,21 +124,21 @@ const DEFAULT_EXPERIENCE_TILES = [
     alt: "Bridal jewellery display",
   },
   {
-    title: "Read Our Journal",
+    titleKey: "readOurJournal",
     href: ROUTES.blog,
     imageUrl:
       "https://res.cloudinary.com/thelayerco/image/upload/v1783788862/Ambika-Jewellers/Indian_jewellery_display_showroom_2K_202607112218_uenwaa.jpg",
     alt: `${SITE.name} jewellery display`,
   },
   {
-    title: "Jewellery Care Guide",
+    titleKey: "jewelleryCareGuide",
     href: ROUTES.jewelleryCare,
     imageUrl:
       "https://res.cloudinary.com/thelayerco/image/upload/v1783788861/Ambika-Jewellers/Indian_gold_diamond_earrings_stand_202607112218_-_Copy_vc0bye.jpg",
     alt: "Gold diamond earrings",
   },
   {
-    title: "Hallmark & Certification",
+    titleKey: "hallmarkAndCertification",
     href: ROUTES.hallmark,
     imageUrl:
       "https://res.cloudinary.com/thelayerco/image/upload/v1783788858/Ambika-Jewellers/Gold_engagement_ring_on_pedestal_202607112218_-_Copy_uz9ctl.jpg",
@@ -171,6 +207,7 @@ export default async function HomePage() {
   ];
   const experienceTiles = DEFAULT_EXPERIENCE_TILES.map((tile, i) => ({
     ...tile,
+    title: t(tile.titleKey, locale),
     imageUrl: experienceImageOverrides[i] || tile.imageUrl,
   }));
 
@@ -193,9 +230,9 @@ export default async function HomePage() {
         <section className="section">
           <Container>
             <SectionHeading
-              eyebrow="Browse"
-              title="Shop by Collection"
-              description="Curated groupings to help you find the right piece faster — from bridal sets to everyday gold."
+              eyebrow={t("browse", locale)}
+              title={t("shopByCollection", locale)}
+              description={t("shopByCollectionDesc", locale)}
             />
             <div>
               {homeCollections.length >= 3 ? (
@@ -207,6 +244,7 @@ export default async function HomePage() {
                     homeCollections[1],
                     homeCollections[2],
                   ]}
+                  locale={locale}
                 />
               ) : (
                 // Fewer than 3 collections — the bento layout has nothing
@@ -221,7 +259,8 @@ export default async function HomePage() {
                       key={collection.id}
                       item={collection}
                       href={ROUTES.collection(collection.slug)}
-                      eyebrow="Collection"
+                      locale={locale}
+                      eyebrow={t("collectionEyebrow", locale)}
                       className={
                         homeCollections.length === 1 ? "sm:max-w-xs" : undefined
                       }
@@ -239,12 +278,12 @@ export default async function HomePage() {
         <section className="section border-t border-border bg-secondary/20">
           <Container>
             <SectionHeading
-              eyebrow="Browse by Type"
-              title="Find Your Perfect Match"
-              description="Every piece in our catalogue, organized the way our showroom is — by type, not by trend."
+              eyebrow={t("browseByType", locale)}
+              title={t("findYourPerfectMatch", locale)}
+              description={t("findYourPerfectMatchDesc", locale)}
             />
             <div className="mt-10">
-              <CategoryShowcaseGrid categories={categories} />
+              <CategoryShowcaseGrid categories={categories} locale={locale} />
             </div>
           </Container>
         </section>
@@ -259,9 +298,9 @@ export default async function HomePage() {
           <section className="section border-t border-border">
             <Container>
               <SectionHeading
-                eyebrow="Made For You"
-                title="Online Exclusive"
-                description="Handcrafted to order — reserve yours online and it's made especially for you."
+                eyebrow={t("madeForYou", locale)}
+                title={t("onlineExclusive", locale)}
+                description={t("onlineExclusiveDesc", locale)}
               />
               <div className="mt-10">
                 <Grid cols={{ base: 2, lg: 4 }} gap="lg">
@@ -282,9 +321,9 @@ export default async function HomePage() {
             <Container className="text-center">
               <SectionHeading
                 align="center"
-                eyebrow="Made For You"
-                title="Online Exclusive, Coming Soon"
-                description="Made-to-order pieces are being added — check back shortly, or visit the showroom to see what's in store today."
+                eyebrow={t("madeForYou", locale)}
+                title={ONLINE_EXCLUSIVE_COMING_SOON_TITLE[locale]}
+                description={ONLINE_EXCLUSIVE_COMING_SOON_DESC[locale]}
               />
             </Container>
           </section>
@@ -295,9 +334,9 @@ export default async function HomePage() {
         <section className="section border-t border-border bg-secondary/20">
           <Container>
             <SectionHeading
-              eyebrow="Shop"
-              title="Our Complete Collection"
-              description="Every piece we carry, from everyday gold to statement bridal sets."
+              eyebrow={t("shopEyebrow", locale)}
+              title={t("ourCompleteCollection", locale)}
+              description={t("ourCompleteCollectionDesc", locale)}
             />
             <div className="mt-10">
               <Grid cols={{ base: 2, lg: 4 }} gap="lg">
@@ -315,7 +354,11 @@ export default async function HomePage() {
               <Button
                 variant="outline"
                 nativeButton={false}
-                render={<Link href={ROUTES.products}>View All Products</Link>}
+                render={
+                  <Link href={ROUTES.products}>
+                    {t("viewAllProducts", locale)}
+                  </Link>
+                }
               />
             </Reveal>
           </Container>
@@ -327,9 +370,9 @@ export default async function HomePage() {
         <section className="section border-t border-border bg-secondary/20">
           <Container>
             <SectionHeading
-              eyebrow="Just In"
-              title="New Arrivals"
-              description="The latest pieces added to our catalogue, freshest first."
+              eyebrow={t("justIn", locale)}
+              title={t("newArrivals", locale)}
+              description={t("newArrivalsDesc", locale)}
             />
             <div className="mt-10">
               <Grid cols={{ base: 2, lg: 4 }} gap="lg">
@@ -355,8 +398,8 @@ export default async function HomePage() {
         <section className="section border-t border-border">
           <Container>
             <SectionHeading
-              eyebrow="Style Guide"
-              title="Ways to Wear It"
+              eyebrow={t("styleGuide", locale)}
+              title={t("waysToWearIt", locale)}
               align="center"
             />
             <div className="mt-4 sm:mt-10">
@@ -384,22 +427,21 @@ export default async function HomePage() {
             </ImageReveal>
             <Reveal direction="left" className="lg:order-1">
               <p className="text-gradient-gold mb-3 text-xs font-medium tracking-[0.2em] uppercase">
-                Our Story
+                {t("ourStoryEyebrow", locale)}
               </p>
               <h2 className="font-heading text-3xl">
-                A trusted name in Roha, presented anew
+                {t("ourStoryTitle", locale)}
               </h2>
               <p className="mt-4 max-w-md text-sm text-muted-foreground">
-                {SITE.name} has served families across {SITE.address.city} with
-                honest pricing and genuine craftsmanship. This site is a new way
-                to browse what we offer — the trust is the same trust you&apos;d
-                find walking through our doors.
+                {t("ourStoryBody", locale)}
               </p>
               <Button
                 variant="outline-gold"
                 className="mt-6"
                 nativeButton={false}
-                render={<Link href={ROUTES.about}>Read Our Story</Link>}
+                render={
+                  <Link href={ROUTES.about}>{t("readOurStory", locale)}</Link>
+                }
               />
             </Reveal>
           </Container>
@@ -413,14 +455,16 @@ export default async function HomePage() {
             <Grid cols={{ base: 2, sm: 4 }} gap="lg">
               {TRUST_POINTS.map((point, i) => (
                 <Reveal
-                  key={point.label}
+                  key={point.labelKey}
                   index={i}
                   className="flex flex-col items-center gap-2 text-center sm:items-start sm:text-left"
                 >
                   <point.icon className="size-6 text-gold" strokeWidth={1.5} />
-                  <p className="text-sm font-medium">{point.label}</p>
+                  <p className="text-sm font-medium">
+                    {t(point.labelKey, locale)}
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    {point.detail}
+                    {t(point.detailKey, locale)}
                   </p>
                 </Reveal>
               ))}
@@ -436,10 +480,10 @@ export default async function HomePage() {
             <Reveal className="overflow-hidden rounded-xl bg-background shadow-sm">
               <div className="px-6 py-10 text-center">
                 <p className="text-gradient-gold mb-2 text-xs font-medium tracking-[0.2em] uppercase">
-                  Shree Ambika Experience
+                  {t("shreeAmbikaExperience", locale)}
                 </p>
                 <h2 className="font-heading text-2xl sm:text-3xl">
-                  Find Us, Reach Us, Learn From Us
+                  {t("findUsReachUsLearnFromUs", locale)}
                 </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
@@ -458,8 +502,8 @@ export default async function HomePage() {
           <Container>
             <SectionHeading
               align="center"
-              eyebrow="What Families Say"
-              title="Loved Across Generations"
+              eyebrow={t("whatFamiliesSay", locale)}
+              title={t("lovedAcrossGenerations", locale)}
             />
             <div className="mt-10">
               <Reveal className="sm:hidden">

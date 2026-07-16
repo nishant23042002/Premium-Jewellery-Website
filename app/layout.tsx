@@ -64,6 +64,9 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     }),
     ...(seo.defaultDescription && { description: seo.defaultDescription }),
+    ...(seo.defaultKeywords && {
+      keywords: seo.defaultKeywords.split(",").map((k) => k.trim()).filter(Boolean),
+    }),
     openGraph: {
       ...base.openGraph,
       ...(seo.defaultDescription && { description: seo.defaultDescription }),

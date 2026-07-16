@@ -1,5 +1,6 @@
 import { formatWeight } from "@/lib/utils/format";
-import type { Locale } from "@/types/common";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale, LocalizedText } from "@/types/common";
 import type { Product } from "@/features/products/product.types";
 
 interface SpecTableProps {
@@ -8,11 +9,17 @@ interface SpecTableProps {
   className?: string;
 }
 
-const MAKING_CHARGE_LABEL: Record<Product["makingChargeType"], string> = {
-  percentage: "% of metal value",
-  per_gram: "per gram",
-  flat: "flat",
+const MAKING_CHARGE_LABEL: Record<Product["makingChargeType"], LocalizedText> = {
+  percentage: {
+    en: "% of metal value",
+    hi: "धातु मूल्य का %",
+    mr: "धातू मूल्याच्या %",
+  },
+  per_gram: { en: "per gram", hi: "प्रति ग्राम", mr: "प्रति ग्रॅम" },
+  flat: { en: "flat", hi: "फ्लैट", mr: "फ्लॅट" },
 };
+
+const TAGS_LABEL: LocalizedText = { en: "Tags", hi: "टैग", mr: "टॅग्स" };
 
 /** Reused on the product detail page and inside the comparison table (Phase 5 "Specification Tables"). */
 export function SpecTable({
@@ -21,20 +28,20 @@ export function SpecTable({
   className,
 }: SpecTableProps) {
   const rows: [string, string][] = [
-    ["SKU", product.skuCode],
-    ["Metal", product.metalType[0].toUpperCase() + product.metalType.slice(1)],
-    ["Purity", product.purity],
-    ["Gross Weight", formatWeight(product.grossWeightGrams)],
-    ["Net Weight", formatWeight(product.netWeightGrams)],
+    [t("skuLabel", locale).replace(/:$/, ""), product.skuCode],
+    [t("metal", locale), product.metalType[0].toUpperCase() + product.metalType.slice(1)],
+    [t("purity", locale), product.purity],
+    [t("grossWeight", locale), formatWeight(product.grossWeightGrams)],
+    [t("netWeight", locale), formatWeight(product.netWeightGrams)],
     [
-      "Making Charge",
-      `${product.makingChargeValue}${product.makingChargeType === "percentage" ? "%" : ""} ${MAKING_CHARGE_LABEL[product.makingChargeType]}`,
+      t("makingCharge", locale),
+      `${product.makingChargeValue}${product.makingChargeType === "percentage" ? "%" : ""} ${MAKING_CHARGE_LABEL[product.makingChargeType][locale]}`,
     ],
-    ["GST", `${product.gstPercentage}%`],
+    [t("gstLabel", locale), `${product.gstPercentage}%`],
   ];
 
   if (product.tags.length > 0) {
-    rows.push(["Tags", product.tags.join(", ")]);
+    rows.push([TAGS_LABEL[locale], product.tags.join(", ")]);
   }
 
   return (

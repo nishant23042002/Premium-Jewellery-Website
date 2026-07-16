@@ -9,13 +9,29 @@ import { useWishlistStore } from "@/store/zustand/use-wishlist-store";
 import { usePolledValue } from "@/hooks/use-polled-value";
 import { getActiveReservationStatusForCustomer } from "@/features/reservations/reservation.actions";
 import { ROUTES } from "@/constants/routes";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
 import type { ReservationStatus } from "@/features/reservations/reservation.types";
+
+const LOCAL_TEXT = {
+  wishlist: { en: "Wishlist", hi: "विशलिस्ट", mr: "विशलिस्ट" },
+  myAccountReservation: {
+    en: (status: string) => `My Account — reservation ${status}`,
+    hi: (status: string) => `मेरा खाता — आरक्षण ${status}`,
+    mr: (status: string) => `माझे खाते — आरक्षण ${status}`,
+  },
+  myAccount: { en: "My Account", hi: "मेरा खाता", mr: "माझे खाते" },
+  cart: { en: "Cart", hi: "कार्ट", mr: "कार्ट" },
+  item: { en: "item", hi: "आइटम", mr: "आयटम" },
+  items: { en: "items", hi: "आइटम", mr: "आयटम्स" },
+} as const;
 
 interface HeaderAccountControlProps {
   isSignedIn: boolean;
   cartItemCount: number;
   /** null when there's nothing awaiting the customer's attention — see getActiveReservationStatusForCustomer. */
   reservationStatus?: ReservationStatus | null;
+  locale?: Locale;
 }
 
 /** pending/confirmed are the only statuses this ever receives (see getActiveReservationStatusForCustomer) — completed/cancelled don't need a persistent dot. */
@@ -29,6 +45,7 @@ export function HeaderAccountControl({
   isSignedIn,
   cartItemCount,
   reservationStatus: initialReservationStatus = null,
+  locale = "en",
 }: HeaderAccountControlProps) {
   const [authOpen, setAuthOpen] = useState(false);
   const wishlistCount = useWishlistStore((s) => s.productIds.length);
@@ -54,7 +71,7 @@ export function HeaderAccountControl({
         variant="ghost"
         size="icon"
         className="relative hidden rounded-full border border-transparent hover:border-border sm:inline-flex"
-        aria-label={`Wishlist${wishlistCount > 0 ? `, ${wishlistCount} item${wishlistCount === 1 ? "" : "s"}` : ""}`}
+        aria-label={`${LOCAL_TEXT.wishlist[locale]}${wishlistCount > 0 ? `, ${wishlistCount} ${wishlistCount === 1 ? LOCAL_TEXT.item[locale] : LOCAL_TEXT.items[locale]}` : ""}`}
         nativeButton={false}
         render={
           <Link href={ROUTES.wishlist}>
@@ -74,9 +91,9 @@ export function HeaderAccountControl({
           size="icon"
           className="relative hidden rounded-full border border-transparent hover:border-border sm:inline-flex"
           aria-label={
-            dotColor
-              ? `My Account — reservation ${reservationStatus}`
-              : "My Account"
+            dotColor && reservationStatus
+              ? LOCAL_TEXT.myAccountReservation[locale](reservationStatus)
+              : LOCAL_TEXT.myAccount[locale]
           }
           nativeButton={false}
           render={
@@ -95,7 +112,7 @@ export function HeaderAccountControl({
           variant="ghost"
           size="icon"
           className="hidden rounded-full border border-transparent hover:border-border sm:inline-flex"
-          aria-label="Sign in"
+          aria-label={t("signIn", locale)}
           onClick={() => setAuthOpen(true)}
         >
           <User className="size-4" />
@@ -106,7 +123,7 @@ export function HeaderAccountControl({
         variant="ghost"
         size="icon"
         className="relative rounded-full border border-transparent hover:border-border"
-        aria-label={`Cart${cartItemCount > 0 ? `, ${cartItemCount} item${cartItemCount === 1 ? "" : "s"}` : ""}`}
+        aria-label={`${LOCAL_TEXT.cart[locale]}${cartItemCount > 0 ? `, ${cartItemCount} ${cartItemCount === 1 ? LOCAL_TEXT.item[locale] : LOCAL_TEXT.items[locale]}` : ""}`}
         nativeButton={false}
         render={
           <Link href={ROUTES.cart}>
@@ -120,7 +137,7 @@ export function HeaderAccountControl({
         }
       />
 
-      <HeaderAuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+      <HeaderAuthDialog open={authOpen} onOpenChange={setAuthOpen} locale={locale} />
     </>
   );
 }

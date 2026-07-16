@@ -6,12 +6,15 @@ import { Reveal } from "@/components/motion/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { CtaBanner } from "@/components/marketing/cta-banner";
+import { canonicalFor } from "@/lib/seo/config";
 import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "BIS Hallmark Certification",
   description:
     "What BIS hallmarking means, what the marks on your gold jewellery certify, and how every piece we sell is verified.",
+  keywords: ["BIS hallmark", "hallmarked gold jewellery", "gold purity certification", "HUID number"],
+  ...canonicalFor(ROUTES.hallmark),
 };
 
 const MARKS = [

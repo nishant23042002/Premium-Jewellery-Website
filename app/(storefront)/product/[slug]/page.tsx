@@ -54,16 +54,29 @@ export async function generateMetadata({
   if (!result) return { title: "Product" };
 
   const { product } = result;
-  const description = `${product.name.en} — ${product.purity} ${product.metalType}, ${formatWeight(product.netWeightGrams)}.`;
-  const image = product.images[0]?.url;
+  const autoDescription = `${product.name.en} — ${product.purity} ${product.metalType}, ${formatWeight(product.netWeightGrams)}. Handcrafted at ${SITE.name}, ${SITE.address.city}.`;
+  const title = product.metaTitle || product.name.en;
+  const description = product.metaDescription || autoDescription;
+  const ogTitle = product.ogTitle || title;
+  const ogDescription = product.ogDescription || description;
+  const image = product.ogImageUrl || product.images[0]?.url;
 
   return {
-    title: product.name.en,
+    title,
     description,
-    ...canonicalFor(ROUTES.product(product.slug)),
+    keywords: [
+      product.name.en,
+      `${product.metalType} ${product.name.en}`,
+      `${product.purity} ${product.metalType} jewellery`,
+      `${product.metalType} jewellery ${SITE.address.city}`,
+      product.skuCode,
+    ],
+    ...(product.canonicalUrl
+      ? { alternates: { canonical: product.canonicalUrl } }
+      : canonicalFor(ROUTES.product(product.slug))),
     openGraph: {
-      title: product.name.en,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       images: image ? [{ url: image }] : undefined,
     },
   };
@@ -139,11 +152,11 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
           className="mb-6 flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
         >
           <Link href={ROUTES.home} className="hover:text-foreground">
-            Home
+            {t("home", locale)}
           </Link>
           <ChevronRight className="size-3" />
           <Link href={ROUTES.products} className="hover:text-foreground">
-            Products
+            {t("products", locale)}
           </Link>
           <ChevronRight className="size-3" />
           <span className="text-foreground">{product.name.en}</span>
@@ -167,15 +180,20 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
             <Reveal direction="right" className="space-y-6">
               <div>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {product.isFeatured && <Badge variant="gold">Featured</Badge>}
+                  {product.isFeatured && (
+                    <Badge variant="gold">{t("featured", locale)}</Badge>
+                  )}
                   <Badge variant="outline" className="capitalize">
                     {product.metalType}
                   </Badge>
-                  <AvailabilityBadge availability={product.availability} />
+                  <AvailabilityBadge
+                    availability={product.availability}
+                    locale={locale}
+                  />
                   {!isMadeToOrder(product) &&
                     product.quantity > 0 &&
                     product.quantity <= LOW_STOCK_THRESHOLD && (
-                      <LowStockBadge quantity={product.quantity} />
+                      <LowStockBadge quantity={product.quantity} locale={locale} />
                     )}
                 </div>
 
@@ -183,12 +201,12 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                   {displayName}
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  SKU: {product.skuCode}
+                  {t("skuLabel", locale)} {product.skuCode}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-secondary/10 p-5">
-                <PriceBreakdown price={price} />
+                <PriceBreakdown price={price} locale={locale} />
               </div>
 
               {displayDescription && (
@@ -202,6 +220,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                   productionTimeDays={product.productionTimeDays}
                   deliveryEstimateDays={product.deliveryEstimateDays}
                   dispatchNote={product.dispatchNote}
+                  locale={locale}
                 />
               )}
 
@@ -209,7 +228,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
                 {isMadeToOrder(product) && (
                   <AddToCartButton productId={product.id} />
                 )}
-                <ReserveButton productSlug={product.slug} />
+                <ReserveButton productSlug={product.slug} locale={locale} />
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button
                     variant="outline-gold"
@@ -247,15 +266,17 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
               </div>
 
               <div className="border-t border-border pt-6">
-                <h2 className="mb-3 text-sm font-medium">Specifications</h2>
-                <SpecTable product={product} className="w-full" />
+                <h2 className="mb-3 text-sm font-medium">
+                  {t("specifications", locale)}
+                </h2>
+                <SpecTable product={product} locale={locale} className="w-full" />
               </div>
             </Reveal>
           </div>
 
           <Reveal className="mt-16 border-t border-border pt-10">
             <h2 className="mb-8 text-center font-heading text-xl">
-              The Journey of This Piece
+              {t("theJourneyOfThisPiece", locale)}
             </h2>
             <ProductTimeline />
           </Reveal>

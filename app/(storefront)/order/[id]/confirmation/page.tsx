@@ -10,9 +10,12 @@ import { getOrderById } from "@/features/orders/order.actions";
 import { getCurrentCustomer } from "@/features/customer-auth/customer-auth.actions";
 import { formatINR } from "@/lib/utils/format";
 import { ROUTES } from "@/constants/routes";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/dictionary";
 
 export const metadata: Metadata = {
   title: "Order Confirmed",
+  robots: { index: false, follow: true },
 };
 
 export default async function OrderConfirmationPage({
@@ -27,6 +30,8 @@ export default async function OrderConfirmationPage({
   const order = await getOrderById(id);
   if (!order) notFound();
 
+  const locale = await getStorefrontLocale();
+
   return (
     <section className="section">
       <Container className="max-w-lg text-center">
@@ -34,10 +39,10 @@ export default async function OrderConfirmationPage({
           className="mx-auto mb-4 size-12 text-green-600"
           strokeWidth={1.5}
         />
-        <h1 className="font-heading text-2xl">Order Confirmed</h1>
+        <h1 className="font-heading text-2xl">{t("orderConfirmed", locale)}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Thank you — your payment was successful and order{" "}
-          <strong>{order.orderNumber}</strong> has been placed.
+          {t("orderConfirmedDesc", locale)} (
+          <strong>{order.orderNumber}</strong>)
         </p>
 
         <Card className="mt-8 border-border/60 text-left">
@@ -46,7 +51,7 @@ export default async function OrderConfirmationPage({
               <OrderItemRow key={item.productId} item={item} />
             ))}
             <div className="flex justify-between border-t border-border pt-3 text-base font-semibold">
-              <span>Grand Total</span>
+              <span>{t("grandTotal", locale)}</span>
               <span>{formatINR(order.pricing.grandTotal)}</span>
             </div>
           </CardContent>
@@ -57,13 +62,13 @@ export default async function OrderConfirmationPage({
             variant="gold"
             nativeButton={false}
             render={
-              <Link href={ROUTES.accountOrder(order.id)}>Track Order</Link>
+              <Link href={ROUTES.accountOrder(order.id)}>{t("trackOrder", locale)}</Link>
             }
           />
           <Button
             variant="outline"
             nativeButton={false}
-            render={<Link href={ROUTES.products}>Continue Shopping</Link>}
+            render={<Link href={ROUTES.products}>{t("continueShopping", locale)}</Link>}
           />
         </div>
       </Container>

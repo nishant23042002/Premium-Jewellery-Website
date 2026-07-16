@@ -71,6 +71,15 @@ export interface Product {
   isFeatured: boolean;
   isPublished: boolean;
   tags: string[];
+  /** Not unique — the same design in multiple sizes can share a manufacturer barcode. Lookup aid for import duplicate-detection, not an identity field. */
+  barcode?: string;
+  /** Per-product SEO overrides — all optional, fall back to name/description-derived defaults at render time when unset. */
+  metaTitle?: string;
+  metaDescription?: string;
+  canonicalUrl?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

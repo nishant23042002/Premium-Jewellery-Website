@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Magnetic } from "@/components/motion/magnetic-button";
 import { Reveal } from "@/components/motion/reveal";
 import { ROUTES, SITE } from "@/constants";
+import { t } from "@/lib/i18n/dictionary";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
 
 interface CtaBannerProps {
   title?: string;
@@ -12,10 +14,11 @@ interface CtaBannerProps {
 }
 
 /** Recurring closing section — "come see it in person" (PRD §6/§23). Used across most pages. */
-export function CtaBanner({
-  title = "See it in person",
-  description = "Photos never do fine jewellery justice. Book a private viewing or drop by the Roha showroom — no obligation, just a closer look.",
-}: CtaBannerProps) {
+export async function CtaBanner({ title, description }: CtaBannerProps) {
+  const locale = await getStorefrontLocale();
+  const resolvedTitle = title ?? t("seeItInPerson", locale);
+  const resolvedDescription = description ?? t("seeItInPersonDesc", locale);
+
   return (
     <section className="section gradient-gold-animated my-10">
       <Container className="flex flex-col items-center gap-6 text-center">
@@ -24,10 +27,10 @@ export function CtaBanner({
           className="my-10 flex flex-col items-center gap-4"
         >
           <h2 className="font-heading text-3xl text-gold-foreground">
-            {title}
+            {resolvedTitle}
           </h2>
           <p className="max-w-lg text-sm text-gold-foreground/80">
-            {description}
+            {resolvedDescription}
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
             <Magnetic>
@@ -35,7 +38,11 @@ export function CtaBanner({
                 size="lg"
                 className="bg-gold-foreground text-gold hover:bg-gold-foreground/90"
                 nativeButton={false}
-                render={<Link href={ROUTES.reservation}>Book a Visit</Link>}
+                render={
+                  <Link href={ROUTES.reservation}>
+                    {t("bookAVisit", locale)}
+                  </Link>
+                }
               />
             </Magnetic>
             <Button

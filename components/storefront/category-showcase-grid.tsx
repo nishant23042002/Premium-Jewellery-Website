@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Gem } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
+import { t } from "@/lib/i18n/dictionary";
 import type { Category } from "@/features/categories/category.types";
 import type { Locale } from "@/types/common";
 
@@ -54,7 +55,13 @@ function CategoryTile({
   );
 }
 
-function ViewAllTile({ totalCount }: { totalCount: number }) {
+function ViewAllTile({
+  totalCount,
+  locale,
+}: {
+  totalCount: number;
+  locale: Locale;
+}) {
   return (
     <Link
       href={ROUTES.categories}
@@ -64,10 +71,10 @@ function ViewAllTile({ totalCount }: { totalCount: number }) {
         {totalCount}+
       </span>
       <span className="max-w-[70%] text-xs text-muted-foreground">
-        Categories to choose from
+        {t("categoriesToChooseFrom", locale)}
       </span>
       <span className="mt-2 flex items-center gap-1 text-xs font-semibold tracking-wide text-gold-dark uppercase">
-        View All
+        {t("viewAll", locale)}
         <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
       </span>
     </Link>
@@ -98,14 +105,18 @@ export function CategoryShowcaseGrid({
         {desktop.visible.map((category) => (
           <CategoryTile key={category.id} category={category} locale={locale} />
         ))}
-        {desktop.showViewAll && <ViewAllTile totalCount={categories.length} />}
+        {desktop.showViewAll && (
+          <ViewAllTile totalCount={categories.length} locale={locale} />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-x-4 gap-y-8 min-[500px]:grid-cols-2 sm:hidden">
         {mobile.visible.map((category) => (
           <CategoryTile key={category.id} category={category} locale={locale} />
         ))}
-        {mobile.showViewAll && <ViewAllTile totalCount={categories.length} />}
+        {mobile.showViewAll && (
+          <ViewAllTile totalCount={categories.length} locale={locale} />
+        )}
       </div>
     </>
   );

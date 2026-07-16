@@ -8,11 +8,14 @@ import { Reveal } from "@/components/motion/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { CtaBanner } from "@/components/marketing/cta-banner";
-import { SITE } from "@/constants";
+import { canonicalFor } from "@/lib/seo/config";
+import { ROUTES, SITE } from "@/constants";
 
 export const metadata: Metadata = {
   title: "About Us",
   description: `The story behind ${SITE.name} — a trusted Roha jewellery showroom built on honest pricing and generations of craftsmanship.`,
+  keywords: [`about ${SITE.name}`, `${SITE.address.city} jewellery showroom history`, "trusted jeweller"],
+  ...canonicalFor(ROUTES.about),
 };
 
 const VALUES = [

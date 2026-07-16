@@ -16,6 +16,7 @@ const categorySchema = new Schema(
     tenantId: tenantField,
     slug: { type: String, required: true, trim: true, lowercase: true },
     name: { type: localizedTextSchema(), required: true },
+    description: { type: localizedTextSchema(false) },
     imageUrl: { type: String },
     sortOrder: { type: Number, default: 0 },
     parentId: { type: Schema.Types.ObjectId, ref: "Category", default: null },

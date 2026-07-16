@@ -29,7 +29,7 @@ export default async function AdminOrderDetailPage({
         title={order.orderNumber}
         description={`Placed ${formatDate(order.createdAt)} by ${order.customerSnapshot.name}`}
         breadcrumbs={[
-          { label: "Orders", href: "/admin/orders" },
+          { label: "Orders", href: ROUTES.admin.orders },
           { label: order.orderNumber },
         ]}
       />

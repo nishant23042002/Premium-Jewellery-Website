@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MapPin, MessageCircle, Phone, Star } from "lucide-react";
+import { FacebookIcon, InstagramIcon } from "@/components/common/social-icons";
 import { Container } from "@/components/common/container";
 import {
   Accordion,
@@ -52,7 +53,8 @@ export function Footer({
                 {SITE.rating.value}
               </span>
               <span>
-                ({SITE.rating.count.toLocaleString("en-IN")} Google reviews)
+                ({SITE.rating.count.toLocaleString("en-IN")}{" "}
+                {t("googleReviews", locale)})
               </span>
             </div>
             <div className="space-y-2 pt-2">
@@ -73,18 +75,40 @@ export function Footer({
                 href={`https://wa.me/${SITE.whatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Chat with us on WhatsApp"
+                aria-label={t("chatOnWhatsApp", locale)}
                 className="focus-luxury flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold"
               >
                 <MessageCircle className="size-4" />
               </a>
               <a
                 href={`tel:${SITE.phone}`}
-                aria-label="Call us"
+                aria-label={t("callUsAriaLabel", locale)}
                 className="focus-luxury flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold"
               >
                 <Phone className="size-4" />
               </a>
+              {SITE.social.instagramUrl && (
+                <a
+                  href={SITE.social.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t("followUsOnInstagram", locale)}
+                  className="focus-luxury flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold"
+                >
+                  <InstagramIcon className="size-4" />
+                </a>
+              )}
+              {SITE.social.facebookUrl && (
+                <a
+                  href={SITE.social.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t("followUsOnFacebook", locale)}
+                  className="focus-luxury flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold"
+                >
+                  <FacebookIcon className="size-4" />
+                </a>
+              )}
             </div>
           </div>
 
@@ -143,7 +167,7 @@ export function Footer({
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} {SITE.name}. {t("allRightsReserved", locale)}
         </p>
-        <BackToTopButton />
+        <BackToTopButton locale={locale} />
       </Container>
     </footer>
   );

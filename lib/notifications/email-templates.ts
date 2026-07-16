@@ -36,9 +36,29 @@ export function passwordResetEmail(
   return { subject, html, text };
 }
 
+/**
+ * Unlike a `wa.me` deep link (text-only, see whatsapp-templates.ts), email
+ * is plain HTML — an `<img>` tag renders as a real inline thumbnail in the
+ * inbox, no link-preview crawler involved. Falls back to just the name when
+ * `imageUrl` isn't available (e.g. the product was since deleted).
+ */
 function productLines(reservation: Reservation): string {
   if (reservation.products.length === 0) return "";
-  return `<p>Pieces: ${reservation.products.map((p) => p.name).join(", ")}</p>`;
+  const rows = reservation.products
+    .map(
+      (p) => `
+        <tr>
+          <td style="padding: 6px 0; vertical-align: middle;">
+            ${
+              p.imageUrl
+                ? `<img src="${p.imageUrl}" alt="${p.name}" width="56" height="56" style="width:56px; height:56px; object-fit:cover; border-radius:8px; vertical-align:middle; margin-right:12px;" />`
+                : ""
+            }<span style="vertical-align: middle;">${p.name}</span>
+          </td>
+        </tr>`,
+    )
+    .join("");
+  return `<p style="margin-bottom: 4px;">Pieces:</p><table role="presentation" style="border-collapse: collapse; width: 100%;"><tbody>${rows}</tbody></table>`;
 }
 
 export function reservationReceivedCustomerEmail(

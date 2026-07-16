@@ -42,6 +42,7 @@ export const ROUTES = {
   accountOrder: (id: string) => `/account/orders/${id}`,
   accountReservations: "/account/reservations",
   apiAuthGoogle: "/api/auth/google",
+  apiAuthAdminGoogle: "/api/auth/admin-google",
 
   cart: "/cart",
   checkout: "/checkout",
@@ -49,6 +50,8 @@ export const ROUTES = {
 
   admin: {
     login: "/admin/login",
+    forgotPassword: "/admin/forgot-password",
+    resetPassword: "/admin/reset-password",
     dashboard: "/admin/dashboard",
     analytics: "/admin/analytics",
 
@@ -128,10 +131,12 @@ export const ROUTES = {
     settings: "/admin/settings",
     settingsAppearance: "/admin/settings/appearance",
     settingsSeo: "/admin/settings/seo",
+    settingsSecurity: "/admin/settings/security",
 
     auditLogs: "/admin/audit-logs",
     recycleBin: "/admin/recycle-bin",
     backups: "/admin/backups",
     importExport: "/admin/import-export",
+    importExportWizard: "/admin/import-export/new",
   },
 } as const;

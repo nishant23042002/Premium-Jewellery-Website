@@ -27,6 +27,33 @@ import {
 } from "@/features/customer-auth/customer-account.schema";
 import { toast } from "@/lib/toast";
 import { ROUTES } from "@/constants/routes";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
+
+const LOCAL_TEXT = {
+  couldntCreateAccount: {
+    en: "Couldn't create your account",
+    hi: "आपका खाता नहीं बनाया जा सका",
+    mr: "तुमचे खाते तयार करता आले नाही",
+  },
+  accountCreatedWelcome: {
+    en: "Account created — welcome!",
+    hi: "खाता बन गया — स्वागत है!",
+    mr: "खाते तयार झाले — स्वागत आहे!",
+  },
+  signUpWithGoogle: {
+    en: "Sign up with Google",
+    hi: "Google से साइन अप करें",
+    mr: "Google सह साइन अप करा",
+  },
+  emailLabel: { en: "Email", hi: "ईमेल", mr: "ईमेल" },
+  phoneOptional: { en: "Phone (optional)", hi: "फ़ोन (वैकल्पिक)", mr: "फोन (ऐच्छिक)" },
+  alreadyHaveAccount: {
+    en: "Already have an account?",
+    hi: "पहले से खाता है?",
+    mr: "आधीच खाते आहे?",
+  },
+} as const;
 
 interface CustomerSignupFormProps {
   redirectTo?: string;
@@ -36,6 +63,7 @@ interface CustomerSignupFormProps {
   onSwitchToLogin?: () => void;
   /** Background the form renders on — passed through to AuthDivider so its label matches. */
   surfaceClassName?: string;
+  locale?: Locale;
 }
 
 export function CustomerSignupForm({
@@ -43,6 +71,7 @@ export function CustomerSignupForm({
   onSuccess,
   onSwitchToLogin,
   surfaceClassName,
+  locale = "en",
 }: CustomerSignupFormProps = {}) {
   const router = useRouter();
 
@@ -54,10 +83,10 @@ export function CustomerSignupForm({
   async function onSubmit(values: SignupFormValues) {
     const result = await signupAction(values);
     if (!result.success) {
-      toast.error("Couldn't create your account", result.error);
+      toast.error(LOCAL_TEXT.couldntCreateAccount[locale], result.error);
       return;
     }
-    toast.success("Account created — welcome!");
+    toast.success(LOCAL_TEXT.accountCreatedWelcome[locale]);
     router.refresh();
     if (onSuccess) {
       onSuccess();
@@ -69,14 +98,18 @@ export function CustomerSignupForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <GoogleSignInButton redirectTo={redirectTo} label="Sign up with Google" />
-        <AuthDivider surfaceClassName={surfaceClassName} />
+        <GoogleSignInButton
+          redirectTo={redirectTo}
+          label={LOCAL_TEXT.signUpWithGoogle[locale]}
+          locale={locale}
+        />
+        <AuthDivider surfaceClassName={surfaceClassName} locale={locale} />
         <FormField
           control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full name</FormLabel>
+              <FormLabel>{t("fullName", locale)}</FormLabel>
               <FormControl>
                 <Input placeholder="Your name" {...field} />
               </FormControl>
@@ -89,7 +122,7 @@ export function CustomerSignupForm({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{LOCAL_TEXT.emailLabel[locale]}</FormLabel>
               <FormControl>
                 <Input type="email" placeholder="you@example.com" {...field} />
               </FormControl>
@@ -102,7 +135,7 @@ export function CustomerSignupForm({
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone (optional)</FormLabel>
+              <FormLabel>{LOCAL_TEXT.phoneOptional[locale]}</FormLabel>
               <FormControl>
                 <Input type="tel" placeholder="+91 98765 43210" {...field} />
               </FormControl>
@@ -115,7 +148,7 @@ export function CustomerSignupForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{t("password", locale)}</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -132,24 +165,24 @@ export function CustomerSignupForm({
           {form.formState.isSubmitting && (
             <Loader2 className="size-4 animate-spin" />
           )}
-          Create Account
+          {t("createAccount", locale)}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {LOCAL_TEXT.alreadyHaveAccount[locale]}{" "}
           {onSwitchToLogin ? (
             <button
               type="button"
               onClick={onSwitchToLogin}
               className="text-gold-dark hover:underline"
             >
-              Sign in
+              {t("signIn", locale)}
             </button>
           ) : (
             <Link
               href={ROUTES.accountLogin}
               className="text-gold-dark hover:underline"
             >
-              Sign in
+              {t("signIn", locale)}
             </Link>
           )}
         </p>

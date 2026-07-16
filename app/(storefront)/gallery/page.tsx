@@ -5,10 +5,14 @@ import { GalleryGrid } from "@/components/marketing/gallery-grid";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { listGalleryImages } from "@/features/gallery/gallery-image.actions";
 import { safeQuery } from "@/lib/db/safe-query";
+import { canonicalFor } from "@/lib/seo/config";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Store Gallery",
   description: "A look inside our Roha showroom.",
+  keywords: ["jewellery showroom photos", "Roha jewellery store"],
+  ...canonicalFor(ROUTES.gallery),
 };
 
 export default async function GalleryPage() {

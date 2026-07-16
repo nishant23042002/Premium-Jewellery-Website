@@ -29,13 +29,25 @@ export function VideoUploadField({ value, onChange }: VideoUploadFieldProps) {
     formData.append("file", file);
 
     startUpload(async () => {
-      const result = await uploadStylingStoryVideo(formData);
-      if (!result.success) {
-        toast.error("Upload failed", result.error);
-        return;
+      try {
+        const result = await uploadStylingStoryVideo(formData);
+        if (!result.success) {
+          toast.error("Upload failed", result.error);
+          return;
+        }
+        toast.success("Video uploaded");
+        onChange(result.data.url);
+      } catch {
+        // A large video upload can genuinely fail at the network level
+        // (dropped connection, dev-server restart mid-upload) rather than
+        // returning a normal ActionResult — without this catch, that
+        // rejection propagated uncaught out of the transition and crashed
+        // to a raw "[object Event]" error screen instead of a toast.
+        toast.error(
+          "Upload failed",
+          "The connection dropped partway through. Please try again.",
+        );
       }
-      toast.success("Video uploaded");
-      onChange(result.data.url);
     });
   }
 

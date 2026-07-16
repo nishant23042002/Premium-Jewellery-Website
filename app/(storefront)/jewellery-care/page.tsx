@@ -6,11 +6,15 @@ import { Reveal } from "@/components/motion/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { CtaBanner } from "@/components/marketing/cta-banner";
+import { canonicalFor } from "@/lib/seo/config";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Jewellery Care Guide",
   description:
     "How to clean, store, and care for your gold, diamond, and antique-finish jewellery between wears.",
+  keywords: ["jewellery care guide", "how to clean gold jewellery", "jewellery storage tips"],
+  ...canonicalFor(ROUTES.jewelleryCare),
 };
 
 const CARE_SECTIONS = [

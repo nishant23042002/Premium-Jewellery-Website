@@ -17,7 +17,10 @@ import {
 import { formatDate, formatINR } from "@/lib/utils/format";
 import { ROUTES } from "@/constants/routes";
 
-export const metadata: Metadata = { title: "Order Details" };
+export const metadata: Metadata = {
+  title: "Order Details",
+  robots: { index: false, follow: true },
+};
 
 export default async function AccountOrderDetailPage({
   params,

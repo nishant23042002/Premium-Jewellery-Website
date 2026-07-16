@@ -10,11 +10,15 @@ import { CtaBanner } from "@/components/marketing/cta-banner";
 import { listOffers } from "@/features/offers/offer.actions";
 import { safeQuery } from "@/lib/db/safe-query";
 import { formatDate } from "@/lib/utils/format";
+import { canonicalFor } from "@/lib/seo/config";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Offers",
   description:
     "Current promotions on making charges, gold coins, and old gold exchange.",
+  keywords: ["jewellery offers", "gold coin offers", "old gold exchange offer", "making charge discount"],
+  ...canonicalFor(ROUTES.offers),
 };
 
 export default async function OffersPage() {

@@ -7,10 +7,13 @@ import type { SessionPayload } from "@/features/auth/admin-user.types";
  * and the customer session (`CustomerSessionPayload`), which are separate JWTs
  * in separate cookies but use the same secret/signing mechanics.
  */
-export function signSessionToken<T extends object>(payload: T): string {
+export function signSessionToken<T extends object>(
+  payload: T,
+  expiresIn?: string,
+): string {
   const { JWT_SECRET, JWT_EXPIRES_IN } = getServerEnv();
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+    expiresIn: (expiresIn ?? JWT_EXPIRES_IN) as jwt.SignOptions["expiresIn"],
   });
 }
 

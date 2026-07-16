@@ -71,7 +71,7 @@ export function HeroCarousel({ slides, className }: HeroCarouselProps) {
   return (
     <div className={cn("relative mb-10 w-full", className)}>
       <div
-        className="mx-auto my-1 aspect-4/5 w-[95%] overflow-hidden rounded-md sm:aspect-8/3"
+        className="mx-auto my-1 aspect-4/5 w-[95%] overflow-hidden rounded-md sm:aspect-14/6"
         ref={emblaRef}
       >
         <div className="flex h-full">

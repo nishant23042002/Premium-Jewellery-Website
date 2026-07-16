@@ -5,6 +5,7 @@ export interface Category {
   tenantId: string;
   slug: string;
   name: LocalizedText;
+  description?: LocalizedText;
   imageUrl?: string;
   sortOrder: number;
   parentId?: string | null;

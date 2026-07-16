@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { BookOpen } from "lucide-react";
+import { ArticleJsonLd, BreadcrumbJsonLd } from "next-seo";
 import { Container } from "@/components/common/container";
 import { PlaceholderImage } from "@/components/common/placeholder-image";
 import { ImageReveal } from "@/components/motion/image-reveal";
@@ -10,7 +11,10 @@ import { PageHero } from "@/components/marketing/page-hero";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { getBlogPostBySlug } from "@/features/blog/blog-post.actions";
 import { safeQuery } from "@/lib/db/safe-query";
+import { canonicalFor } from "@/lib/seo/config";
+import { siteConfig } from "@/config/site.config";
 import { ROUTES } from "@/constants/routes";
+import { SITE } from "@/constants/site";
 import { formatDate } from "@/lib/utils/format";
 
 interface BlogPostPageProps {
@@ -23,7 +27,19 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await safeQuery(() => getBlogPostBySlug(slug), null);
   if (!post) return { title: "Journal" };
-  return { title: post.title.en, description: post.excerpt.en };
+  return {
+    title: post.title.en,
+    description: post.excerpt.en,
+    keywords: [post.category, ...post.tags],
+    ...canonicalFor(ROUTES.blogPost(post.slug)),
+    openGraph: {
+      title: post.title.en,
+      description: post.excerpt.en,
+      type: "article",
+      publishedTime: post.publishedAt,
+      images: post.coverImageUrl ? [{ url: post.coverImageUrl }] : undefined,
+    },
+  };
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
@@ -36,6 +52,23 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <>
+      <ArticleJsonLd
+        type="BlogPosting"
+        headline={post.title.en}
+        description={post.excerpt.en}
+        url={`${siteConfig.url}${ROUTES.blogPost(post.slug)}`}
+        author={{ "@type": "Organization", name: SITE.name }}
+        datePublished={post.publishedAt}
+        dateModified={post.updatedAt}
+        image={post.coverImageUrl ? [post.coverImageUrl] : []}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Home", item: siteConfig.url },
+          { name: "Journal", item: `${siteConfig.url}${ROUTES.blog}` },
+          { name: post.title.en },
+        ]}
+      />
       <PageHero
         eyebrow={post.category}
         title={post.title.en}

@@ -82,7 +82,22 @@ const nextConfig: NextConfig = {
         hostname: "res.cloudinary.com",
         pathname: "/**",
       },
+      // Reviewer avatars from the Google Places API (see
+      // features/reviews/google-review.actions.ts).
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
     ],
+    // AVIF first (smaller than WebP for photos at the same quality; Next
+    // serves whichever the browser's Accept header supports, falling back
+    // to WebP then the original). Product/category photos change rarely, so
+    // a week-long optimizer cache (Next's default is 60s) trades a small
+    // amount of staleness after a re-upload for far fewer repeat
+    // optimization passes on the same asset.
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 604_800,
   },
   async headers() {
     return [

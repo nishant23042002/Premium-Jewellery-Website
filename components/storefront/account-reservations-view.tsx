@@ -25,11 +25,52 @@ import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { RESERVATION_STATUS_META } from "@/constants/reservation";
 import { formatDate } from "@/lib/utils/format";
 import { toast } from "@/lib/toast";
+import { t } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/types/common";
 import type { Reservation } from "@/features/reservations/reservation.types";
+
+const LOCAL_TEXT = {
+  couldntCancelThat: {
+    en: "Couldn't cancel that",
+    hi: "उसे रद्द नहीं किया जा सका",
+    mr: "ते रद्द करता आले नाही",
+  },
+  reservationCancelled: {
+    en: "Reservation cancelled",
+    hi: "आरक्षण रद्द किया गया",
+    mr: "आरक्षण रद्द केले",
+  },
+  haventBookedVisit: {
+    en: "You haven't booked a visit yet.",
+    hi: "आपने अभी तक कोई विज़िट बुक नहीं की है।",
+    mr: "तुम्ही अद्याप कोणतीही भेट बुक केलेली नाही.",
+  },
+  showroomVisit: { en: "Showroom visit", hi: "शोरूम विज़िट", mr: "शोरूम भेट" },
+  more: { en: "more", hi: "और", mr: "अधिक" },
+  cancelThisReservation: {
+    en: "Cancel this reservation?",
+    hi: "क्या यह आरक्षण रद्द करें?",
+    mr: "हे आरक्षण रद्द करायचे का?",
+  },
+  cancelDialogWillBeCancelled: {
+    en: "will be cancelled. You can always book another visit later.",
+    hi: "रद्द कर दिया जाएगा। आप बाद में हमेशा एक और विज़िट बुक कर सकते हैं।",
+    mr: "रद्द केले जाईल. तुम्ही नंतर केव्हाही दुसरी भेट बुक करू शकता.",
+  },
+  cancelDialogVisitOn: {
+    en: "Your visit on",
+    hi: "पर आपकी विज़िट",
+    mr: "रोजी तुमची भेट",
+  },
+  keepReservation: { en: "Keep Reservation", hi: "आरक्षण रखें", mr: "आरक्षण ठेवा" },
+  cancelling: { en: "Cancelling...", hi: "रद्द किया जा रहा है...", mr: "रद्द करत आहे..." },
+  cancelReservation: { en: "Cancel Reservation", hi: "आरक्षण रद्द करें", mr: "आरक्षण रद्द करा" },
+} as const;
 
 interface AccountReservationsViewProps {
   reservations: Reservation[];
   prefillCustomer: { name: string; phone?: string; email: string };
+  locale?: Locale;
 }
 
 /** Statuses a customer can still cancel from themselves — mirrors RESERVATION_STATUS_TRANSITIONS server-side (cancelReservationAsCustomer re-validates, this is just for which button to show). */
@@ -38,6 +79,7 @@ const CANCELLABLE_STATUSES = new Set(["pending", "confirmed"]);
 export function AccountReservationsView({
   reservations,
   prefillCustomer,
+  locale = "en",
 }: AccountReservationsViewProps) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(reservations.length === 0);
@@ -59,10 +101,10 @@ export function AccountReservationsView({
     startTransition(async () => {
       const result = await cancelReservationAsCustomer(id);
       if (!result.success) {
-        toast.error("Couldn't cancel that", result.error);
+        toast.error(LOCAL_TEXT.couldntCancelThat[locale], result.error);
         return;
       }
-      toast.success("Reservation cancelled");
+      toast.success(LOCAL_TEXT.reservationCancelled[locale]);
       setCancelTarget(null);
       router.refresh();
     });
@@ -80,12 +122,12 @@ export function AccountReservationsView({
             {showForm ? (
               <>
                 <X className="size-3.5" />
-                Cancel
+                {t("cancel", locale)}
               </>
             ) : (
               <>
                 <Plus className="size-3.5" />
-                Book a New Visit
+                {t("bookANewVisit", locale)}
               </>
             )}
           </Button>
@@ -95,10 +137,11 @@ export function AccountReservationsView({
       {showForm && (
         <Card className="border-border/60">
           <CardContent className="pt-2">
-            <h2 className="mb-4 font-heading text-xl">Reserve Your Visit</h2>
+            <h2 className="mb-4 font-heading text-xl">{t("reserveYourVisit", locale)}</h2>
             <ReservationForm
               prefillCustomer={prefillCustomer}
               onSuccess={handleFormSuccess}
+              locale={locale}
             />
           </CardContent>
         </Card>
@@ -111,7 +154,7 @@ export function AccountReservationsView({
             strokeWidth={1.5}
           />
           <p className="text-sm text-muted-foreground">
-            You haven&apos;t booked a visit yet.
+            {t("haventBookedVisit", locale)}
           </p>
         </div>
       ) : (
@@ -140,11 +183,11 @@ export function AccountReservationsView({
                     )}
                     <div className="min-w-0">
                       <p className="truncate font-medium">
-                        {firstItem?.name ?? "Showroom visit"}
+                        {firstItem?.name ?? LOCAL_TEXT.showroomVisit[locale]}
                         {extraCount > 0 && (
                           <span className="text-muted-foreground">
                             {" "}
-                            +{extraCount} more
+                            +{extraCount} {LOCAL_TEXT.more[locale]}
                           </span>
                         )}
                       </p>
@@ -164,7 +207,7 @@ export function AccountReservationsView({
                         size="sm"
                         onClick={() => setCancelTarget(reservation)}
                       >
-                        Cancel
+                        {t("cancel", locale)}
                       </Button>
                     )}
                   </div>
@@ -181,25 +224,26 @@ export function AccountReservationsView({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel this reservation?</AlertDialogTitle>
+            <AlertDialogTitle>{LOCAL_TEXT.cancelThisReservation[locale]}</AlertDialogTitle>
             <AlertDialogDescription>
               {cancelTarget && (
                 <>
-                  Your visit on {formatDate(cancelTarget.preferredDate)} (
-                  {cancelTarget.preferredTimeSlot}) will be cancelled. You can
-                  always book another visit later.
+                  {LOCAL_TEXT.cancelDialogVisitOn[locale]}{" "}
+                  {formatDate(cancelTarget.preferredDate)} (
+                  {cancelTarget.preferredTimeSlot}){" "}
+                  {LOCAL_TEXT.cancelDialogWillBeCancelled[locale]}
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
+            <AlertDialogCancel>{LOCAL_TEXT.keepReservation[locale]}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={isPending}
               onClick={handleCancel}
             >
-              {isPending ? "Cancelling..." : "Cancel Reservation"}
+              {isPending ? LOCAL_TEXT.cancelling[locale] : LOCAL_TEXT.cancelReservation[locale]}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -17,6 +17,7 @@ import { PriceBreakdown } from "@/components/storefront/price-breakdown";
 import { ReserveButton } from "@/components/storefront/reserve-button";
 import { AvailabilityBadge } from "@/components/storefront/availability-badge";
 import { pickLocalized } from "@/lib/i18n/pick-localized";
+import { t } from "@/lib/i18n/dictionary";
 import { ROUTES } from "@/constants/routes";
 import type { Locale } from "@/types/common";
 import type {
@@ -82,23 +83,27 @@ export function ProductQuickView({
 
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-1.5">
-              {product.isFeatured && <Badge variant="gold">Featured</Badge>}
+              {product.isFeatured && (
+                <Badge variant="gold">{t("featured", locale)}</Badge>
+              )}
               <Badge variant="outline" className="capitalize">
                 {product.metalType}
               </Badge>
-              <AvailabilityBadge availability={product.availability} />
+              <AvailabilityBadge availability={product.availability} locale={locale} />
             </div>
-            <p className="text-xs text-muted-foreground">SKU: {product.skuCode}</p>
-            <PriceBreakdown price={price} />
+            <p className="text-xs text-muted-foreground">
+              {t("skuLabel", locale)} {product.skuCode}
+            </p>
+            <PriceBreakdown price={price} locale={locale} />
             <div className="mt-auto space-y-2 pt-2">
-              <ReserveButton productSlug={product.slug} />
+              <ReserveButton productSlug={product.slug} locale={locale} />
               <Button
                 variant="outline"
                 className="w-full"
                 nativeButton={false}
                 render={
                   <Link href={ROUTES.product(product.slug)} onClick={() => setOpen(false)}>
-                    View Full Details
+                    {t("viewFullDetails", locale)}
                   </Link>
                 }
               />

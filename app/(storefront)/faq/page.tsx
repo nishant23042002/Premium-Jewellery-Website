@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
+import { FAQJsonLd } from "next-seo";
 import { Container } from "@/components/common/container";
 import { PageHero } from "@/components/marketing/page-hero";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { listFaqItems } from "@/features/faq/faq-item.actions";
 import { safeQuery } from "@/lib/db/safe-query";
+import { canonicalFor } from "@/lib/seo/config";
+import { ROUTES } from "@/constants/routes";
 
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",
   description:
     "Answers to common questions about pricing, hallmarking, reservations, and exchanges.",
+  keywords: ["jewellery FAQ", "gold pricing questions", "hallmarking questions", "jewellery exchange policy"],
+  ...canonicalFor(ROUTES.faq),
 };
 
 export default async function FaqPage() {
@@ -17,6 +22,14 @@ export default async function FaqPage() {
 
   return (
     <>
+      {items.length > 0 && (
+        <FAQJsonLd
+          questions={items.map((item) => ({
+            question: item.question.en,
+            answer: item.answer.en,
+          }))}
+        />
+      )}
       <PageHero
         eyebrow="Support"
         title="Frequently Asked Questions"

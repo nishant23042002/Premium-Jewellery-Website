@@ -12,26 +12,35 @@ import { getCurrentCustomer } from "@/features/customer-auth/customer-auth.actio
 import { formatDate, formatINR } from "@/lib/utils/format";
 import { ORDER_STATUS_LABELS } from "@/constants/order-status";
 import { ROUTES } from "@/constants/routes";
+import { getStorefrontLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/dictionary";
 
 export const metadata: Metadata = {
   title: "My Orders",
+  robots: { index: false, follow: true },
 };
+
+const MORE_SUFFIX = { en: "more", hi: "और", mr: "अधिक" } as const;
 
 export default async function AccountOrdersPage() {
   const customer = await getCurrentCustomer();
   if (!customer) redirect(ROUTES.accountLogin);
 
-  const orders = await listOrdersForCustomer();
+  const [orders, locale] = await Promise.all([
+    listOrdersForCustomer(),
+    getStorefrontLocale(),
+  ]);
 
   return (
     <>
       <PageHero
-        eyebrow="My Account"
-        title="My Orders"
+        eyebrow={t("myAccount", locale)}
+        title={t("myOrders", locale)}
         breadcrumbs={[
-          { label: "My Account", href: ROUTES.account },
-          { label: "Orders" },
+          { label: t("myAccount", locale), href: ROUTES.account },
+          { label: t("myOrders", locale) },
         ]}
+        locale={locale}
       />
 
       <section className="section pt-0">
@@ -43,7 +52,7 @@ export default async function AccountOrdersPage() {
                 strokeWidth={1.5}
               />
               <p className="text-sm text-muted-foreground">
-                You haven&apos;t placed any orders yet.
+                {t("haventPlacedOrders", locale)}
               </p>
             </div>
           ) : (
@@ -75,7 +84,7 @@ export default async function AccountOrdersPage() {
                               {extraCount > 0 && (
                                 <span className="text-muted-foreground">
                                   {" "}
-                                  +{extraCount} more
+                                  +{extraCount} {MORE_SUFFIX[locale]}
                                 </span>
                               )}
                             </p>
