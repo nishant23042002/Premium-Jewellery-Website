@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.about),
 };
 
+// Static informational content, no per-visitor personalization — cached at
+// the CDN and re-rendered at most once an hour instead of hitting the DB
+// (and paying full SSR latency) on every single visit.
+export const revalidate = 3600;
+
 const VALUES = [
   {
     icon: ShieldCheck,

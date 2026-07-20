@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Gem } from "lucide-react";
 import { motion } from "motion/react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ImageReveal } from "@/components/motion/image-reveal";
 import { MouseGlow } from "@/components/motion/mouse-glow";
 import { CollectionCard } from "@/components/storefront/collection-card";
@@ -25,6 +25,7 @@ function BentoTile({
   return (
     <motion.div
       whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         "relative overflow-hidden",
@@ -38,7 +39,7 @@ function BentoTile({
         >
           <ImageReveal className="absolute inset-0 rounded-xl">
             {collection.imageUrl ? (
-              <Image
+              <ImageWithFallback
                 src={collection.imageUrl}
                 alt={collection.name[locale]}
                 fill

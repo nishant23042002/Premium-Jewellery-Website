@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.gallery),
 };
 
+export const revalidate = 3600;
+
 export default async function GalleryPage() {
   const images = await safeQuery(() => listGalleryImages(), []);
 

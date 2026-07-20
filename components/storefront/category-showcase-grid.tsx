@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Gem } from "lucide-react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ROUTES } from "@/constants/routes";
 import { t } from "@/lib/i18n/dictionary";
 import type { Category } from "@/features/categories/category.types";
@@ -28,15 +28,14 @@ function CategoryTile({
       href={ROUTES.category(category.slug)}
       className="group block text-center"
     >
-      <div className="aspect-square overflow-hidden rounded-xl bg-secondary min-[500px]:aspect-4/5">
+      <div className="relative aspect-square overflow-hidden rounded-xl bg-secondary min-[500px]:aspect-4/5">
         {category.imageUrl ? (
-          <Image
+          <ImageWithFallback
             src={category.imageUrl}
             alt={category.name[locale]}
-            width={280}
-            height={280}
+            fill
             sizes="(min-width: 640px) 22vw, 45vw"
-            className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
           <div className="gradient-gold-animated flex size-full items-center justify-center">

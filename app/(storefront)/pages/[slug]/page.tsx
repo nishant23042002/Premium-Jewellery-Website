@@ -12,6 +12,8 @@ interface CmsPageRouteProps {
   params: Promise<{ slug: string }>;
 }
 
+export const revalidate = 3600;
+
 /** First ~155 characters of the page's own content, on a word boundary — the closest thing this generic CMS page type has to a hand-written meta description. */
 function summarize(text: string, maxLength = 155): string {
   const trimmed = text.trim();

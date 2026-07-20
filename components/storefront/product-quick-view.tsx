@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Eye } from "lucide-react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import {
   Dialog,
   DialogContent,
@@ -71,7 +71,7 @@ export function ProductQuickView({
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
             {coverImage && (
-              <Image
+              <ImageWithFallback
                 src={coverImage.url}
                 alt={coverImage.altText?.[locale] || displayName}
                 fill

@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: `Terms governing the use of ${SITE.name}'s website.`,
 };
 
+export const revalidate = 3600;
+
 export default function TermsPage() {
   return (
     <>

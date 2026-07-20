@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.jewelleryCare),
 };
 
+export const revalidate = 3600;
+
 const CARE_SECTIONS = [
   {
     icon: Droplets,

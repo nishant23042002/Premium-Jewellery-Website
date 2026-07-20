@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { PlaceholderImage } from "@/components/common/placeholder-image";
 import { formatDate } from "@/lib/utils/format";
 import type { StoreEvent } from "@/features/events/event.types";
@@ -13,7 +13,7 @@ export function EventCard({ event }: { event: StoreEvent }) {
     <Card className="overflow-hidden border-border/60 py-0 shadow-sm">
       <div className="relative aspect-16/9">
         {event.imageUrl ? (
-          <Image
+          <ImageWithFallback
             src={event.imageUrl}
             alt={event.title.en}
             fill

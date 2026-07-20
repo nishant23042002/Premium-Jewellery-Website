@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.faq),
 };
 
+export const revalidate = 3600;
+
 export default async function FaqPage() {
   const items = await safeQuery(() => listFaqItems(), []);
 

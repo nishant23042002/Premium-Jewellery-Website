@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.blog),
 };
 
+export const revalidate = 3600;
+
 export default async function BlogIndexPage() {
   const posts = await safeQuery(() => listBlogPosts(), []);
 

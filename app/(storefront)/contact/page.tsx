@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.contact),
 };
 
+export const revalidate = 3600;
+
 export default function ContactPage() {
   const mapQuery = encodeURIComponent(SITE.address.full);
 

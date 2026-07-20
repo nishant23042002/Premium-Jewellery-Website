@@ -1,5 +1,6 @@
 "use client";
 
+import NextTopLoader from "nextjs-toploader";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -20,6 +21,17 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <ReduxProvider>
         <SmoothScrollProvider>
           <LenisResizeOnRouteChange />
+          {/* Fires the instant a link is clicked/route change starts — the
+              one piece of nav feedback that can't wait for a route's own
+              loading.tsx, since that only appears once the destination
+              segment starts rendering. Gives every click/tap an immediate
+              response regardless of how long the navigation itself takes. */}
+          <NextTopLoader
+            color="var(--gold)"
+            height={2}
+            showSpinner={false}
+            shadow="0 0 10px var(--gold), 0 0 5px var(--gold)"
+          />
           <TooltipProvider delay={200}>
             {children}
             <CustomCursor />

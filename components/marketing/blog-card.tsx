@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { motion } from "motion/react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { PlaceholderImage } from "@/components/common/placeholder-image";
 import { ImageReveal } from "@/components/motion/image-reveal";
 import { MouseGlow } from "@/components/motion/mouse-glow";
@@ -16,6 +16,7 @@ export function BlogCard({ post }: { post: BlogPost }) {
   return (
     <motion.div
       whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
     >
       <Link href={ROUTES.blogPost(post.slug)} className="group block">
@@ -25,7 +26,7 @@ export function BlogCard({ post }: { post: BlogPost }) {
         >
           <ImageReveal className="absolute inset-0">
             {post.coverImageUrl ? (
-              <Image
+              <ImageWithFallback
                 src={post.coverImageUrl}
                 alt={post.title.en}
                 fill

@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { formatINR } from "@/lib/utils/format";
 import { t } from "@/lib/i18n/dictionary";
 import { ROUTES } from "@/constants/routes";
@@ -26,7 +26,7 @@ export function OrderItemRow({
         className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-muted"
       >
         {item.imageUrl && (
-          <Image
+          <ImageWithFallback
             src={item.imageUrl}
             alt={item.name}
             fill

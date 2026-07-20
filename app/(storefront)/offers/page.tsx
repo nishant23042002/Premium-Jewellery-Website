@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.offers),
 };
 
+export const revalidate = 3600;
+
 export default async function OffersPage() {
   const offers = await safeQuery(() => listOffers(), []);
 

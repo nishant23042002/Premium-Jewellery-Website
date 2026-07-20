@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Clock, Loader2, Search, TrendingUp, X } from "lucide-react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -57,7 +57,7 @@ function ProductRow({
     >
       <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted">
         {product.images[0] && (
-          <Image
+          <ImageWithFallback
             src={product.images[0].url}
             alt={product.images[0].altText?.en ?? product.name.en}
             fill
@@ -467,7 +467,7 @@ export function HeaderSearch({
                             >
                               <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
                                 {product.images[0] && (
-                                  <Image
+                                  <ImageWithFallback
                                     src={product.images[0].url}
                                     alt={
                                       product.images[0].altText?.en ??
@@ -636,7 +636,7 @@ export function HeaderSearch({
                         >
                           <div className="relative aspect-square overflow-hidden rounded-md bg-muted">
                             {product.images[0] && (
-                              <Image
+                              <ImageWithFallback
                                 src={product.images[0].url}
                                 alt={
                                   product.images[0].altText?.en ??

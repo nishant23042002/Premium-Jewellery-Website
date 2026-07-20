@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.hallmark),
 };
 
+export const revalidate = 3600;
+
 const MARKS = [
   {
     icon: ShieldCheck,

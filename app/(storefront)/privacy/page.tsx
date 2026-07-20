@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: `How ${SITE.name} collects, uses, and protects your information.`,
 };
 
+export const revalidate = 3600;
+
 export default function PrivacyPage() {
   return (
     <>

@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.events),
 };
 
+export const revalidate = 3600;
+
 export default async function EventsPage() {
   const events = await safeQuery(() => listEvents(), []);
 

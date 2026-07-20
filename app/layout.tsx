@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import {
   Cormorant_Garamond,
   Geist,
@@ -93,34 +92,6 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${cormorant.variable} ${notoDevanagari.variable} h-full antialiased`}
     >
-      <Script
-        id="abconsent-stub"
-        data-cfasync="false"
-        type="text/javascript"
-        src="https://cache.consentframework.com/js/pa/53030/c/WgN91/stub?source=google-tag"
-        strategy="beforeInteractive"
-      />
-      <Script
-        id="abconsent-cmp"
-        data-cfasync="false"
-        type="text/javascript"
-        src="https://choices.consentframework.com/js/pa/53030/c/WgN91/cmp?source=google-tag"
-        strategy="beforeInteractive"
-      />
-      <Script
-        id="google-tag-manager"
-        src="https://www.googletagmanager.com/gtag/js?id=G-E3SGT4C3LE"
-        strategy="beforeInteractive"
-      />
-      <Script id="google-tag" strategy="beforeInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-
-          gtag('config', 'G-E3SGT4C3LE');
-        `}
-      </Script>
       {/* overflow-x-hidden: `Reveal`'s pre-animation transform offset
           (e.g. `direction="right"`'s translateX) can push content past the
           right edge on narrow viewports before it settles into place —

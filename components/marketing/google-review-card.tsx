@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { Quote, Star } from "lucide-react";
 import { motion } from "motion/react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { Card, CardContent } from "@/components/ui/card";
 import { MouseGlow } from "@/components/motion/mouse-glow";
 import type { GoogleReview } from "@/features/reviews/google-review.types";
@@ -37,12 +37,13 @@ export function GoogleReviewCard({ review }: { review: GoogleReview }) {
             <div className="flex items-center gap-3">
               <div className="relative size-9 shrink-0 overflow-hidden rounded-full bg-muted">
                 {review.profilePhotoUrl && (
-                  <Image
+                  <ImageWithFallback
                     src={review.profilePhotoUrl}
                     alt={review.authorName}
                     fill
                     sizes="36px"
                     className="object-cover"
+                    wrapperClassName="rounded-full"
                   />
                 )}
               </div>

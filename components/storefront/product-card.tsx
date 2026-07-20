@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Heart, Scale } from "lucide-react";
 import { motion } from "motion/react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { Badge } from "@/components/ui/badge";
 import { Magnetic } from "@/components/motion/magnetic-button";
 import { MouseGlow } from "@/components/motion/mouse-glow";
@@ -95,6 +95,7 @@ export function ProductCard({
     <motion.div
       className={cn("group relative", className)}
       whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
     >
       <Link href={ROUTES.product(product.slug)} className="block">
@@ -105,7 +106,7 @@ export function ProductCard({
           <ProductQuickView product={product} price={price} locale={locale} />
           {coverImage ? (
             <>
-              <Image
+              <ImageWithFallback
                 src={coverImage.url}
                 alt={coverImage.altText?.[locale] || displayName}
                 fill
@@ -120,7 +121,7 @@ export function ProductCard({
                   images are pre-laid-out via `fill`, so the swap is
                   opacity-only — no layout shift. */}
               {hoverImage && (
-                <Image
+                <ImageWithFallback
                   src={hoverImage.url}
                   alt={hoverImage.altText?.[locale] || displayName}
                   fill

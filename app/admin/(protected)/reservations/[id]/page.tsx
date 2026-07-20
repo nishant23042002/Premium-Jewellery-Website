@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Mail, MessageCircle, Phone } from "lucide-react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -122,7 +122,7 @@ export default async function AdminReservationDetailPage({
                   >
                     <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-muted">
                       {p.imageUrl ? (
-                        <Image
+                        <ImageWithFallback
                           src={p.imageUrl}
                           alt={p.name}
                           fill

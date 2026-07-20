@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   ...canonicalFor(ROUTES.testimonials),
 };
 
+export const revalidate = 3600;
+
 export default async function TestimonialsPage() {
   // Real Google Reviews take priority when configured (live fetch, or the
   // last successfully cached batch if the Places API is down) — the

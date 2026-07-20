@@ -21,6 +21,8 @@ interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
 }
 
+export const revalidate = 3600;
+
 export async function generateMetadata({
   params,
 }: BlogPostPageProps): Promise<Metadata> {

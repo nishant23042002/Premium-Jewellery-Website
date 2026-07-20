@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { Gem } from "lucide-react";
 import { Grid } from "@/components/common/grid";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { PlaceholderImage } from "@/components/common/placeholder-image";
 import { ImageReveal } from "@/components/motion/image-reveal";
 
@@ -20,7 +20,7 @@ export function GalleryGrid({ items }: { items: GalleryItem[] }) {
           className="relative aspect-square rounded-xl"
         >
           {item.imageUrl ? (
-            <Image
+            <ImageWithFallback
               src={item.imageUrl}
               alt={item.caption ?? ""}
               fill

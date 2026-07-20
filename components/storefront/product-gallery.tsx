@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageReveal } from "@/components/motion/image-reveal";
 import { ImageZoom } from "@/components/storefront/image-zoom";
@@ -122,7 +122,7 @@ function PhotosPane({
                   : "border-transparent hover:border-border",
               )}
             >
-              <Image
+              <ImageWithFallback
                 src={image.url}
                 alt=""
                 fill

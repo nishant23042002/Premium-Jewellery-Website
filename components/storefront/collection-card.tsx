@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Gem } from "lucide-react";
 import { motion } from "motion/react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ImageReveal } from "@/components/motion/image-reveal";
 import { MouseGlow } from "@/components/motion/mouse-glow";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ export function CollectionCard({
   return (
     <motion.div
       whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
     >
       <MouseGlow
@@ -55,7 +56,7 @@ export function CollectionCard({
         <Link href={href} className="group block h-full w-full">
           <ImageReveal className="absolute inset-0">
             {item.imageUrl ? (
-              <Image
+              <ImageWithFallback
                 src={item.imageUrl}
                 alt={item.name[locale]}
                 fill
