@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useReducedMotion } from "motion/react";
-import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { cn } from "@/lib/utils";
 import type { HeroSlide } from "@/features/hero-slides/hero-slide.types";
 
@@ -80,7 +80,7 @@ export function HeroCarousel({ slides, className }: HeroCarouselProps) {
               key={slide.id}
               className="relative h-full min-w-0 shrink-0 grow-0 basis-full"
             >
-              <ImageWithFallback
+              <Image
                 src={slide.mobileImageUrl}
                 alt={slide.altText}
                 fill
@@ -88,7 +88,7 @@ export function HeroCarousel({ slides, className }: HeroCarouselProps) {
                 sizes="100vw"
                 className="block object-cover sm:hidden"
               />
-              <ImageWithFallback
+              <Image
                 src={slide.desktopImageUrl}
                 alt={slide.altText}
                 fill
